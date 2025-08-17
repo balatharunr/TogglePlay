@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TogglePlay Extension</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>TogglePlay</h1>
+      <div class="toggle-container">
+        <label class="toggle-switch">
+          <input type="checkbox" id="enableToggle" aria-label="Enable Auto-Toggle">
+          <span class="slider"></span>
+        </label>
+        <span class="toggle-label">Enable Auto-Toggle</span>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="section">
+        <h3>Add Toggle Pair</h3>
+        <div class="add-pair-section">
+          <div class="current-tab-section">
+            <h4>Current Tab (Tab 1)</h4>
+            <div class="tab-item" id="currentTab">
+              <div class="tab-info">
+                <span class="tab-title">Loading current tab...</span>
+                <span class="tab-url"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="arrow">⇄</div>
+
+          <div class="available-tabs-section">
+            <h4>Choose Second Tab</h4>
+            <div id="availableTabs" class="available-tabs">
+              <div class="loading-message">Loading available tabs...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Active Toggle Pairs</h3>
+        <div id="togglePairs" class="toggle-pairs">
+          <div class="no-pairs">No toggle pairs configured</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>How to Use</h3>
+        <div class="instructions">
+          <ol>
+            <li>Open this extension while on a YouTube or Spotify tab</li>
+            <li>Open another YouTube or Spotify tab in your browser</li>
+            <li>Return to this tab and click on the second tab from the list below</li>
+            <li>The toggle pair will be created and enabled automatically!</li>
+            <li>Now when you play/pause in either tab, the other will automatically pause/play</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
