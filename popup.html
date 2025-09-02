@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TogglePlay Extension</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>TogglePlay</h1>
+      <div class="toggle-container">
+        <label class="toggle-switch">
+          <input type="checkbox" id="enableToggle" aria-label="Enable Auto-Toggle">
+          <span class="slider"></span>
+        </label>
+        <span class="toggle-label">Enable</span>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="tab-selection-container">
+        <div class="tab-column">
+          <h3>Primary</h3>
+          <div class="tab-item" id="currentTab">
+            <div class="tab-info">
+              <span class="tab-title">Loading current tab...</span>
+              <span class="tab-url"></span>
+            </div>
+            <div class="tab-status">
+              <span class="status-indicator active"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-column">
+          <h3>Secondary</h3>
+          <div class="tab-selection">
+            <div id="availableTabs" class="available-tabs">
+              <div class="loading-message">Loading available tabs...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pairs-container">
+        <h3>Active Pairs</h3>
+        <div id="togglePairs" class="toggle-pairs">
+          <div class="no-pairs">No toggle pairs configured</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="status-bar">
+      <div class="connection-status">
+        <span id="statusIndicator" class="status-dot"></span>
+        <span id="statusText">Ready</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
