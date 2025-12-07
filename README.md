@@ -30,13 +30,6 @@ A Microsoft Edge extension that automatically toggles play/pause between YouTube
 5. Select the TogglePlay folder
 6. The extension icon will appear in the toolbar
 
-### Missing Icons:
-Create these icon files in the `icons/` folder:
-- `icon16.png` (16x16px)
-- `icon32.png` (32x32px) 
-- `icon48.png` (48x48px)
-- `icon128.png` (128x128px)
-
 ## Usage
 
 1. **Open media tabs**: Open YouTube videos, YouTube Music, and/or Spotify web player in different tabs
@@ -64,11 +57,8 @@ TogglePlay/
 ├── popup.html              # Extension popup interface
 ├── popup.css               # Popup styling
 ├── popup.js                # Popup functionality
-├── icons/                  # Extension icons (create these)
-│   ├── icon16.png
-│   ├── icon32.png
-│   ├── icon48.png
-│   └── icon128.png
+├── icon.png                # Extension icon
+├── prompt.md               # Development prompts
 └── README.md               # This file
 ```
 
