@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "TogglePlay Debug",
-  "version": "1.0.1",
-  "description": "Simplified version for debugging YouTube tab sync",
+  "name": "TogglePlay",
+  "version": "1.0.0",
+  "description": "Automatically toggles play/pause between YouTube tabs for seamless media experience",
   
   "permissions": [
     "tabs",
@@ -16,7 +16,7 @@
   ],
   
   "background": {
-    "service_worker": "background_simple.js"
+    "service_worker": "background.js"
   },
   
   "content_scripts": [
@@ -25,13 +25,13 @@
         "https://www.youtube.com/*",
         "https://youtube.com/*"
       ],
-      "js": ["content_simple.js"],
+      "js": ["content.js"],
       "run_at": "document_idle"
     }
   ],
   
   "action": {
     "default_popup": "popup.html",
-    "default_title": "TogglePlay Debug"
+    "default_title": "TogglePlay"
   }
 }

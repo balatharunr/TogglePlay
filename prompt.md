@@ -15,8 +15,7 @@ First focus on getting YouTube tabs to properly communicate and toggle playback.
 ## 1. Project Setup Prompt
 
 ```
-I need to create a new browser extension called TogglePlay that automatically toggles play/pause between different media tabs. Please help me set up the basic file structure 
-I'm building this extension completely for microsoft edge add-ons
+I need to create a new browser extension called TogglePlay that automatically toggles play/pause between different media tabs. Please help me set up the basic file structure
 
 The extension should have permissions for accessing tabs, storage, scripting, and executing scripts on YouTube.
 ```

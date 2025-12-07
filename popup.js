@@ -375,7 +375,7 @@ async function handleTabSelection(tabId) {
             if (!state.isEnabled) {
                 await sendMessage({ type: 'SET_ENABLED', enabled: true });
                 state.isEnabled = true;
-                renderToggleSwitch();
+                elements.enableToggle.checked = true;
             }
             
             // Reload and refresh UI
