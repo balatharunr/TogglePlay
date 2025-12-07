@@ -205,7 +205,7 @@ function renderCurrentTab(tab) {
         container.innerHTML = `
             <div class="tab-info">
                 <span class="tab-title">No media tab active</span>
-                <span class="tab-url">Navigate to YouTube or Spotify</span>
+                <span class="tab-url">Navigate to YouTube, YouTube Music, or Spotify</span>
             </div>
             <div class="tab-status">
                 <span class="status-indicator inactive"></span>
@@ -222,7 +222,13 @@ function renderCurrentTab(tab) {
     try {
         displayUrl = new URL(tab.url).hostname;
     } catch (e) {
-        displayUrl = sourceType === 'spotify' ? 'open.spotify.com' : 'youtube.com';
+        if (sourceType === 'spotify') {
+            displayUrl = 'open.spotify.com';
+        } else if (sourceType === 'ytmusic') {
+            displayUrl = 'music.youtube.com';
+        } else {
+            displayUrl = 'youtube.com';
+        }
     }
     
     container.innerHTML = `
@@ -244,7 +250,7 @@ function renderAvailableTabs() {
     
     if (state.availableTabs.length === 0) {
         container.innerHTML = `
-            <div class="no-available-tabs">No other YouTube or Spotify tabs found</div>
+            <div class="no-available-tabs">No other YouTube, YouTube Music, or Spotify tabs found</div>
         `;
         return;
     }
@@ -258,7 +264,13 @@ function renderAvailableTabs() {
         try {
             displayUrl = new URL(tab.url).hostname;
         } catch (e) {
-            displayUrl = sourceType === 'spotify' ? 'open.spotify.com' : 'youtube.com';
+            if (sourceType === 'spotify') {
+                displayUrl = 'open.spotify.com';
+            } else if (sourceType === 'ytmusic') {
+                displayUrl = 'music.youtube.com';
+            } else {
+                displayUrl = 'youtube.com';
+            }
         }
         
         const isSelected = tab.id === state.selectedTabId;
@@ -333,7 +345,7 @@ function renderActivePairs() {
  * Check if URL is a YouTube URL
  */
 function isYouTubeUrl(url) {
-    return url && (
+    return url && !url.includes('music.youtube.com') && (
         url.includes('youtube.com/watch') ||
         url.includes('youtu.be/') ||
         (url.includes('youtube.com') && (
@@ -345,6 +357,13 @@ function isYouTubeUrl(url) {
 }
 
 /**
+ * Check if URL is a YouTube Music URL
+ */
+function isYTMusicUrl(url) {
+    return url && url.includes('music.youtube.com');
+}
+
+/**
  * Check if URL is a Spotify URL
  */
 function isSpotifyUrl(url) {
@@ -352,16 +371,17 @@ function isSpotifyUrl(url) {
 }
 
 /**
- * Check if URL is a media URL (YouTube or Spotify)
+ * Check if URL is a media URL (YouTube, YouTube Music, or Spotify)
  */
 function isMediaUrl(url) {
-    return isYouTubeUrl(url) || isSpotifyUrl(url);
+    return isYouTubeUrl(url) || isYTMusicUrl(url) || isSpotifyUrl(url);
 }
 
 /**
  * Get source type from URL
  */
 function getSourceType(url) {
+    if (isYTMusicUrl(url)) return 'ytmusic';
     if (isYouTubeUrl(url)) return 'youtube';
     if (isSpotifyUrl(url)) return 'spotify';
     return null;
@@ -372,6 +392,7 @@ function getSourceType(url) {
  */
 function getSourceIcon(sourceType) {
     if (sourceType === 'youtube') return '▶️';
+    if (sourceType === 'ytmusic') return '🎧';
     if (sourceType === 'spotify') return '🎵';
     return '🎶';
 }

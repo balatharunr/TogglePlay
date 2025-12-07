@@ -30,6 +30,7 @@ function error(message, ...args) {
  */
 function getSourceType(url) {
     if (!url) return null;
+    if (url.includes('music.youtube.com')) return 'ytmusic';
     if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
     if (url.includes('open.spotify.com')) return 'spotify';
     return null;
@@ -97,18 +98,37 @@ async function getSpotifyTabs() {
 }
 
 /**
- * Get all media tabs (YouTube + Spotify)
+ * Get YouTube Music tabs
+ */
+async function getYTMusicTabs() {
+    try {
+        const tabs = await chrome.tabs.query({
+            url: ['https://music.youtube.com/*']
+        });
+        
+        log('Found YouTube Music tabs:', tabs.length);
+        return tabs;
+    } catch (err) {
+        error('Failed to get YouTube Music tabs:', err);
+        return [];
+    }
+}
+
+/**
+ * Get all media tabs (YouTube + YouTube Music + Spotify)
  */
 async function getAllMediaTabs() {
     try {
-        const [youtubeTabs, spotifyTabs] = await Promise.all([
+        const [youtubeTabs, ytmusicTabs, spotifyTabs] = await Promise.all([
             getYouTubeTabs(),
+            getYTMusicTabs(),
             getSpotifyTabs()
         ]);
         
         // Add source type to each tab
         const allTabs = [
             ...youtubeTabs.map(tab => ({ ...tab, sourceType: 'youtube' })),
+            ...ytmusicTabs.map(tab => ({ ...tab, sourceType: 'ytmusic' })),
             ...spotifyTabs.map(tab => ({ ...tab, sourceType: 'spotify' }))
         ];
         
