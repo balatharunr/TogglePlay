@@ -201,11 +201,11 @@ async function loadActivePairs() {
 function renderCurrentTab(tab) {
     const container = elements.currentTab;
     
-    if (!tab || !tab.url || !isYouTubeUrl(tab.url)) {
+    if (!tab || !tab.url || !isMediaUrl(tab.url)) {
         container.innerHTML = `
             <div class="tab-info">
-                <span class="tab-title">No YouTube tab active</span>
-                <span class="tab-url">Navigate to a YouTube video</span>
+                <span class="tab-title">No media tab active</span>
+                <span class="tab-url">Navigate to YouTube or Spotify</span>
             </div>
             <div class="tab-status">
                 <span class="status-indicator inactive"></span>
@@ -214,18 +214,20 @@ function renderCurrentTab(tab) {
         return;
     }
     
-    const title = tab.title || 'YouTube Video';
+    const title = tab.title || 'Media';
+    const sourceType = getSourceType(tab.url);
+    const icon = getSourceIcon(sourceType);
     let displayUrl = '';
     
     try {
         displayUrl = new URL(tab.url).hostname;
     } catch (e) {
-        displayUrl = 'youtube.com';
+        displayUrl = sourceType === 'spotify' ? 'open.spotify.com' : 'youtube.com';
     }
     
     container.innerHTML = `
         <div class="tab-info">
-            <span class="tab-title">${escapeHtml(title)}</span>
+            <span class="tab-title">${icon} ${escapeHtml(title)}</span>
             <span class="tab-url">${escapeHtml(displayUrl)}</span>
         </div>
         <div class="tab-status">
@@ -242,19 +244,21 @@ function renderAvailableTabs() {
     
     if (state.availableTabs.length === 0) {
         container.innerHTML = `
-            <div class="no-available-tabs">No other YouTube tabs found</div>
+            <div class="no-available-tabs">No other YouTube or Spotify tabs found</div>
         `;
         return;
     }
     
     const tabsHtml = state.availableTabs.map(tab => {
-        const title = tab.title || 'YouTube Video';
+        const title = tab.title || 'Media';
+        const sourceType = tab.sourceType || getSourceType(tab.url);
+        const icon = getSourceIcon(sourceType);
         let displayUrl = '';
         
         try {
             displayUrl = new URL(tab.url).hostname;
         } catch (e) {
-            displayUrl = 'youtube.com';
+            displayUrl = sourceType === 'spotify' ? 'open.spotify.com' : 'youtube.com';
         }
         
         const isSelected = tab.id === state.selectedTabId;
@@ -262,7 +266,7 @@ function renderAvailableTabs() {
         return `
             <div class="available-tab-item ${isSelected ? 'selected' : ''}" data-tab-id="${tab.id}">
                 <div class="available-tab-info">
-                    <span class="available-tab-title">${escapeHtml(title)}</span>
+                    <span class="available-tab-title">${icon} ${escapeHtml(title)}</span>
                     <span class="available-tab-url">${escapeHtml(displayUrl)}</span>
                 </div>
                 <button class="select-button" data-tab-id="${tab.id}">
@@ -298,19 +302,21 @@ function renderActivePairs() {
     }
     
     const pairedTab = firstPair.pairedWith[0];
-    const title1 = firstPair.title || 'YouTube Video';
-    const title2 = pairedTab.title || 'YouTube Video';
+    const title1 = firstPair.title || 'Media';
+    const title2 = pairedTab.title || 'Media';
+    const icon1 = getSourceIcon(firstPair.sourceType || getSourceType(firstPair.url));
+    const icon2 = getSourceIcon(pairedTab.sourceType || getSourceType(pairedTab.url));
     
     const pairHtml = `
         <div class="pair-item">
             <div class="pair-tabs">
                 <div class="pair-tab">
-                    <div class="pair-tab-title">${escapeHtml(title1)}</div>
+                    <div class="pair-tab-title">${icon1} ${escapeHtml(title1)}</div>
                     <div class="pair-tab-url">Tab ${firstPair.tabId}</div>
                 </div>
                 <div class="pair-arrow">↔</div>
                 <div class="pair-tab">
-                    <div class="pair-tab-title">${escapeHtml(title2)}</div>
+                    <div class="pair-tab-title">${icon2} ${escapeHtml(title2)}</div>
                     <div class="pair-tab-url">Tab ${pairedTab.tabId}</div>
                 </div>
             </div>
@@ -336,6 +342,38 @@ function isYouTubeUrl(url) {
             url.includes('/embed/')
         ))
     );
+}
+
+/**
+ * Check if URL is a Spotify URL
+ */
+function isSpotifyUrl(url) {
+    return url && url.includes('open.spotify.com');
+}
+
+/**
+ * Check if URL is a media URL (YouTube or Spotify)
+ */
+function isMediaUrl(url) {
+    return isYouTubeUrl(url) || isSpotifyUrl(url);
+}
+
+/**
+ * Get source type from URL
+ */
+function getSourceType(url) {
+    if (isYouTubeUrl(url)) return 'youtube';
+    if (isSpotifyUrl(url)) return 'spotify';
+    return null;
+}
+
+/**
+ * Get icon for source type
+ */
+function getSourceIcon(sourceType) {
+    if (sourceType === 'youtube') return '▶️';
+    if (sourceType === 'spotify') return '🎵';
+    return '🎶';
 }
 
 /**

@@ -1,20 +1,22 @@
 # TogglePlay Extension
 
-A Microsoft Edge extension that automatically toggles play/pause between YouTube tabs for seamless media experience.
+A Microsoft Edge extension that automatically toggles play/pause between YouTube and Spotify tabs for seamless media experience.
 
 ## Features
 
-- **YouTube-to-YouTube Synchronization**: When one YouTube tab plays, paired tabs automatically pause
+- **YouTube & Spotify Support**: Works with both YouTube videos and Spotify web player
+- **Cross-Platform Sync**: Pair YouTube ↔ YouTube, Spotify ↔ Spotify, or YouTube ↔ Spotify
 - **Bidirectional Control**: Either tab can control the other
 - **Single Pair Mode**: Only one active pair at a time for simplicity
 - **Persistent Settings**: Pairs and settings are saved across browser sessions
-- **Smart Detection**: Automatically detects YouTube video elements and state changes
+- **Smart Detection**: Automatically detects media elements and state changes
 - **Robust Error Handling**: Handles tab refreshes, navigation, and connection issues
+- **Keyboard Shortcut**: Press 'B' to pause both tabs instantly
 
 ## How It Works
 
-1. **Primary Tab**: The currently active/selected tab
-2. **Secondary Tab**: Choose from available YouTube tabs
+1. **Primary Tab**: The currently active/selected tab (YouTube or Spotify)
+2. **Secondary Tab**: Choose from available YouTube or Spotify tabs
 3. **Auto-Toggle**: When primary plays → secondary pauses, when primary pauses → secondary plays
 4. **Single Pair**: Only one pair allowed at a time, new selections replace existing pairs
 
@@ -37,11 +39,16 @@ Create these icon files in the `icons/` folder:
 
 ## Usage
 
-1. **Open YouTube tabs**: Open multiple YouTube videos in different tabs
+1. **Open media tabs**: Open YouTube videos and/or Spotify web player in different tabs
 2. **Click extension icon**: Click the TogglePlay icon in the toolbar
 3. **Enable extension**: Make sure the toggle is "ON"
-4. **Select secondary tab**: Choose a YouTube tab from the "Secondary" list
-5. **Start watching**: Play/pause in either tab to see automatic synchronization
+4. **Select secondary tab**: Choose a media tab from the "Secondary" list
+5. **Start listening**: Play/pause in either tab to see automatic synchronization
+
+### Supported Combinations:
+- ▶️ YouTube ↔ ▶️ YouTube (two YouTube video tabs)
+- 🎵 Spotify ↔ 🎵 Spotify (two Spotify tabs)
+- ▶️ YouTube ↔ 🎵 Spotify (mixed pairing)
 
 ## File Structure
 
@@ -49,22 +56,23 @@ Create these icon files in the `icons/` folder:
 TogglePlay/
 ├── manifest.json           # Extension configuration
 ├── background.js           # Service worker for tab communication
-├── content_youtube.js      # YouTube page integration
-├── popup.html             # Extension popup interface
-├── popup.css              # Popup styling
-├── popup.js               # Popup functionality
-├── icons/                 # Extension icons (create these)
+├── content.js              # YouTube page integration
+├── content-spotify.js      # Spotify web player integration
+├── popup.html              # Extension popup interface
+├── popup.css               # Popup styling
+├── popup.js                # Popup functionality
+├── icons/                  # Extension icons (create these)
 │   ├── icon16.png
 │   ├── icon32.png
 │   ├── icon48.png
 │   └── icon128.png
-└── README.md              # This file
+└── README.md               # This file
 ```
 
 ## Technical Details
 
 ### Architecture:
-- **Content Script**: Detects video state changes on YouTube pages
+- **Content Scripts**: Detect playback state changes on YouTube and Spotify pages
 - **Background Service Worker**: Manages communication between tabs
 - **Popup Interface**: User controls for pairing and settings
 - **Storage**: Persists pairs and settings using Chrome storage API
@@ -74,6 +82,7 @@ TogglePlay/
 - Retry logic for failed communications
 - Automatic cleanup of invalid pairs
 - Support for YouTube's SPA navigation
+- Spotify web player DOM-based control
 - Cross-tab synchronization with 1:1 pairing
 
 ### Error Handling:
@@ -87,23 +96,31 @@ TogglePlay/
 ### Common Issues:
 
 1. **Extension not working**: 
-   - Check that you're on YouTube video pages
-   - Refresh YouTube tabs after installing
+   - Check that you're on YouTube video pages or Spotify web player
+   - Refresh tabs after installing
    - Check browser console for errors
 
 2. **Tabs not syncing**:
-   - Ensure both tabs have videos loaded
+   - Ensure both tabs have media loaded
+   - For Spotify, make sure the web player is active (not in "Connect to a device" mode)
    - Check that extension is enabled
    - Try removing and re-adding the pair
 
 3. **Missing tabs in selection**:
-   - Make sure tabs are actual YouTube video pages (/watch, /shorts)
+   - For YouTube: Make sure tabs are video pages (/watch, /shorts)
+   - For Spotify: Make sure you're on open.spotify.com
    - Refresh the extension popup
    - Check that tabs are not private/incognito
 
+4. **Spotify not responding**:
+   - Make sure Spotify web player is fully loaded
+   - Play a song first to activate the player controls
+   - Refresh the Spotify tab and try again
+
 ### Debug Mode:
 Open browser console (F12) to see detailed logs:
-- Content script logs: `[TogglePlay Content-{tabId}]`
+- YouTube content script logs: `[TogglePlay Content-{tabId}]`
+- Spotify content script logs: `[TogglePlay Spotify-{tabId}]`
 - Background script logs: `[TogglePlay Background]`
 - Popup script logs: `[TogglePlay Popup]`
 
@@ -116,6 +133,7 @@ The extension follows the prompts and specifications in `prompt.md` and is speci
 - Chrome extension APIs
 - Robust error handling and retry logic
 - Modern ES6+ JavaScript
+- No API keys required (uses DOM manipulation for both YouTube and Spotify)
 
 ## License
 

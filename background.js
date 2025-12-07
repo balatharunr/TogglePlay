@@ -1,6 +1,6 @@
 /**
  * TogglePlay Extension - Background Service Worker
- * Manages communication between YouTube tabs
+ * Manages communication between YouTube and Spotify tabs
  */
 
 // Simple configuration
@@ -23,6 +23,16 @@ function log(message, ...args) {
 
 function error(message, ...args) {
     console.error('[TogglePlay Background]', message, ...args);
+}
+
+/**
+ * Determine the source type from URL
+ */
+function getSourceType(url) {
+    if (!url) return null;
+    if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
+    if (url.includes('open.spotify.com')) return 'spotify';
+    return null;
 }
 
 /**
@@ -65,6 +75,47 @@ async function getYouTubeTabs() {
         return videoTabs;
     } catch (err) {
         error('Failed to get YouTube tabs:', err);
+        return [];
+    }
+}
+
+/**
+ * Get Spotify tabs
+ */
+async function getSpotifyTabs() {
+    try {
+        const tabs = await chrome.tabs.query({
+            url: ['https://open.spotify.com/*']
+        });
+        
+        log('Found Spotify tabs:', tabs.length);
+        return tabs;
+    } catch (err) {
+        error('Failed to get Spotify tabs:', err);
+        return [];
+    }
+}
+
+/**
+ * Get all media tabs (YouTube + Spotify)
+ */
+async function getAllMediaTabs() {
+    try {
+        const [youtubeTabs, spotifyTabs] = await Promise.all([
+            getYouTubeTabs(),
+            getSpotifyTabs()
+        ]);
+        
+        // Add source type to each tab
+        const allTabs = [
+            ...youtubeTabs.map(tab => ({ ...tab, sourceType: 'youtube' })),
+            ...spotifyTabs.map(tab => ({ ...tab, sourceType: 'spotify' }))
+        ];
+        
+        log('Found total media tabs:', allTabs.length);
+        return allTabs;
+    } catch (err) {
+        error('Failed to get all media tabs:', err);
         return [];
     }
 }
@@ -121,23 +172,29 @@ async function addPair(tabId1, tabId2) {
             chrome.tabs.get(tabId2)
         ]);
         
+        // Determine source types
+        const sourceType1 = getSourceType(tab1.url);
+        const sourceType2 = getSourceType(tab2.url);
+        
         // Clear existing pairs
         state.pairs.clear();
         
-        // Add bidirectional pairing
+        // Add bidirectional pairing with source type
         state.pairs.set(tabId1, {
-            pairedWith: [{ tabId: tabId2, title: tab2.title, url: tab2.url }],
+            pairedWith: [{ tabId: tabId2, title: tab2.title, url: tab2.url, sourceType: sourceType2 }],
             title: tab1.title,
-            url: tab1.url
+            url: tab1.url,
+            sourceType: sourceType1
         });
         
         state.pairs.set(tabId2, {
-            pairedWith: [{ tabId: tabId1, title: tab1.title, url: tab1.url }],
+            pairedWith: [{ tabId: tabId1, title: tab1.title, url: tab1.url, sourceType: sourceType1 }],
             title: tab2.title,
-            url: tab2.url
+            url: tab2.url,
+            sourceType: sourceType2
         });
         
-        log('Pair added successfully');
+        log('Pair added successfully:', sourceType1, '↔', sourceType2);
         return { success: true };
     } catch (err) {
         error('Failed to add pair:', err);
@@ -162,13 +219,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     return { success: true };
                 
                 case 'GET_TABS':
-                    const tabs = await getYouTubeTabs();
+                    const tabs = await getAllMediaTabs();
                     return { 
                         success: true, 
                         tabs: tabs.map(tab => ({
                             id: tab.id,
                             title: tab.title,
-                            url: tab.url
+                            url: tab.url,
+                            sourceType: tab.sourceType
                         }))
                     };
                 
