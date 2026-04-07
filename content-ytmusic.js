@@ -139,7 +139,7 @@
     /**
      * Notify background of playback state change
      */
-    function notifyPlaybackChange(isPlaying) {
+    function notifyPlaybackChange(isPlaying, force = false) {
         // Clear any pending debounce
         if (state.debounceTimer) {
             clearTimeout(state.debounceTimer);
@@ -147,7 +147,7 @@
         
         // Debounce to avoid rapid state changes
         state.debounceTimer = setTimeout(async () => {
-            if (state.isPlaying !== isPlaying) {
+            if (force || state.isPlaying !== isPlaying) {
                 state.isPlaying = isPlaying;
                 log('Playback state changed:', isPlaying ? 'PLAYING' : 'PAUSED');
                 
@@ -226,11 +226,9 @@
         video.addEventListener('pause', handlePause);
         video.addEventListener('ended', handleEnded);
         
-        // Check current state
+        // Check current state - force send initial state
         const isPlaying = getPlaybackState(video);
-        if (isPlaying !== state.isPlaying) {
-            notifyPlaybackChange(isPlaying);
-        }
+        notifyPlaybackChange(isPlaying, true);
         
         log('Video listeners set up');
     }

@@ -187,14 +187,14 @@
     /**
      * Notify state change (debounced)
      */
-    function notifyStateChange(newState) {
+    function notifyStateChange(newState, force = false) {
         if (!isContextValid()) {
             state.contextValid = false;
             return;
         }
         
-        // Only notify if state actually changed
-        if (state.isPlaying === newState) {
+        // Only notify if state actually changed (unless forced)
+        if (!force && state.isPlaying === newState) {
             return;
         }
         
@@ -297,12 +297,12 @@
             }
         }, 500);
         
-        // Initial state
+        // Initial state - force send to ensure background knows our state
         const initialState = getPlaybackState();
         state.lastKnownState = initialState;
         state.isPlaying = initialState;
         log('Initial state:', initialState ? 'PLAYING' : 'PAUSED');
-        notifyStateChange(initialState);
+        notifyStateChange(initialState, true);
     }
 
     /**
