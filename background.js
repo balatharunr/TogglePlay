@@ -14,7 +14,9 @@ const CONFIG = {
 // Simple state
 let state = {
     pairs: new Map(),
-    isEnabled: true
+    isEnabled: true,
+    // Track tabs we've programmatically controlled to prevent loops
+    controlledTabs: new Set()
 };
 
 function log(message, ...args) {
@@ -141,11 +143,20 @@ async function getAllMediaTabs() {
 }
 
 /**
- * SIMPLE toggle logic - just opposite actions
+ * SIMPLE toggle logic - only react to PLAY events to avoid loops
+ * When one tab starts playing, pause the other. That's it.
  */
 async function handlePlaybackStateChange(tabId, isPlaying) {
     if (!state.isEnabled) {
         log('Extension disabled');
+        return;
+    }
+    
+    // If this tab was programmatically controlled by us, ignore its state change
+    // to prevent infinite loops
+    if (state.controlledTabs.has(tabId)) {
+        log(`Ignoring state change from controlled tab ${tabId}`);
+        state.controlledTabs.delete(tabId);
         return;
     }
     
@@ -160,22 +171,24 @@ async function handlePlaybackStateChange(tabId, isPlaying) {
     const pairedTabId = pairInfo.pairedWith[0].tabId;
     
     try {
+        // Only act when a tab starts PLAYING - pause the other one
+        // When a tab pauses, do nothing (user might want both paused)
         if (isPlaying) {
-            // This tab started playing -> pause the other
             log(`Pausing paired tab ${pairedTabId}`);
+            // Mark the paired tab as controlled so we ignore its pause event
+            state.controlledTabs.add(pairedTabId);
             await sendMessageToTab(pairedTabId, {
                 type: 'CONTROL_PLAYBACK',
                 action: 'PAUSE'
             });
-        } else {
-            // This tab paused -> play the other
-            log(`Playing paired tab ${pairedTabId}`);
-            await sendMessageToTab(pairedTabId, {
-                type: 'CONTROL_PLAYBACK',
-                action: 'PLAY'
-            });
+            // Clear the flag after a delay in case the message didn't go through
+            setTimeout(() => {
+                state.controlledTabs.delete(pairedTabId);
+            }, 1000);
         }
+        // If paused - do nothing. The other tab stays as-is.
     } catch (err) {
+        state.controlledTabs.delete(pairedTabId);
         error('Failed to control paired tab:', err);
     }
 }
