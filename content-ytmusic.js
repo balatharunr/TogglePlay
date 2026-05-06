@@ -122,6 +122,7 @@
         try {
             const response = await chrome.runtime.sendMessage({
                 ...message,
+                tabId: state.tabId,
                 source: 'ytmusic'
             });
             return response;
