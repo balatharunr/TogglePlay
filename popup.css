@@ -12,7 +12,7 @@ body {
   color: #e0e0e0;
   background-color: #1e1e1e;
   width: 480px; /* Fixed width */
-  height: 400px; /* Increased height for pairs section */
+  height: 420px; /* Increased height for pairs section and footer */
   margin: 0;
   padding: 0;
   overflow: hidden;
@@ -489,6 +489,18 @@ input:checked + .slider:before {
 
 .status-dot.error {
   background-color: #d32f2f;
+}
+
+.privacy-link {
+  color: #888;
+  font-size: 11px;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.privacy-link:hover {
+  color: #3b82f6;
+  text-decoration: underline;
 }
 
 /* Notification styling */
