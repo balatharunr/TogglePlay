@@ -143,15 +143,16 @@ async function getAllMediaTabs() {
 }
 
 /**
- * SIMPLE toggle logic - only react to PLAY events to avoid loops
- * When one tab starts playing, pause the other. That's it.
+ * Toggle logic - bidirectional sync
+ * When one tab plays, the other pauses
+ * When one tab pauses, the other plays (if it was paused)
  */
 async function handlePlaybackStateChange(tabId, isPlaying) {
     if (!state.isEnabled) {
         log('Extension disabled');
         return;
     }
-    
+
     // If this tab was programmatically controlled by us, ignore its state change
     // to prevent infinite loops
     if (state.controlledTabs.has(tabId)) {
@@ -159,34 +160,41 @@ async function handlePlaybackStateChange(tabId, isPlaying) {
         state.controlledTabs.delete(tabId);
         return;
     }
-    
+
     const pairInfo = state.pairs.get(tabId);
     if (!pairInfo || !pairInfo.pairedWith || pairInfo.pairedWith.length === 0) {
         log('No pair found for tab', tabId);
         return;
     }
-    
+
     log(`Tab ${tabId} is now:`, isPlaying ? 'PLAYING' : 'PAUSED');
-    
+
     const pairedTabId = pairInfo.pairedWith[0].tabId;
-    
+
     try {
-        // Only act when a tab starts PLAYING - pause the other one
-        // When a tab pauses, do nothing (user might want both paused)
         if (isPlaying) {
+            // A tab started playing - pause the paired tab
             log(`Pausing paired tab ${pairedTabId}`);
-            // Mark the paired tab as controlled so we ignore its pause event
             state.controlledTabs.add(pairedTabId);
             await sendMessageToTab(pairedTabId, {
                 type: 'CONTROL_PLAYBACK',
                 action: 'PAUSE'
             });
-            // Clear the flag after a delay in case the message didn't go through
+            setTimeout(() => {
+                state.controlledTabs.delete(pairedTabId);
+            }, 1000);
+        } else {
+            // A tab paused - start playing the paired tab
+            log(`Playing paired tab ${pairedTabId}`);
+            state.controlledTabs.add(pairedTabId);
+            await sendMessageToTab(pairedTabId, {
+                type: 'CONTROL_PLAYBACK',
+                action: 'PLAY'
+            });
             setTimeout(() => {
                 state.controlledTabs.delete(pairedTabId);
             }, 1000);
         }
-        // If paused - do nothing. The other tab stays as-is.
     } catch (err) {
         state.controlledTabs.delete(pairedTabId);
         error('Failed to control paired tab:', err);
@@ -239,7 +247,7 @@ async function addPair(tabId1, tabId2) {
  * Message listener
  */
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    log('Received message:', message.type, 'from tab:', sender.tab?.id);
+    console.log('[TogglePlay Background] Received message:', message.type, 'from tab:', sender.tab?.id, 'source:', message.source);
     
     const handleAsync = async () => {
         try {
@@ -248,6 +256,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     return { tabId: sender.tab?.id };
                 
                 case 'PLAYBACK_STATE_CHANGED':
+                    console.log('[TogglePlay Background] Handling playback state change:', message.isPlaying, 'from tab:', sender.tab?.id);
                     await handlePlaybackStateChange(sender.tab.id, message.isPlaying);
                     return { success: true };
                 
@@ -291,27 +300,33 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     // Pause both tabs in the pair
                     const senderTabId = sender.tab?.id;
                     const senderPairInfo = state.pairs.get(senderTabId);
-                    
+
                     if (senderPairInfo && senderPairInfo.pairedWith && senderPairInfo.pairedWith.length > 0) {
                         const pairedTabId = senderPairInfo.pairedWith[0].tabId;
-                        
+
                         // Temporarily disable toggle to prevent the pause from triggering play on the other tab
                         const wasEnabled = state.isEnabled;
                         state.isEnabled = false;
-                        
+
+                        // Mark both tabs as controlled to prevent toggle loop
+                        state.controlledTabs.add(senderTabId);
+                        state.controlledTabs.add(pairedTabId);
+
                         // Pause the paired tab (current tab is already paused by content script)
                         await sendMessageToTab(pairedTabId, { type: 'CONTROL_PLAYBACK', action: 'PAUSE' });
-                        
+
                         // Re-enable after a short delay to let the pause events settle
                         setTimeout(() => {
                             state.isEnabled = wasEnabled;
+                            state.controlledTabs.delete(senderTabId);
+                            state.controlledTabs.delete(pairedTabId);
                             log('Re-enabled toggle after PAUSE_BOTH');
                         }, 500);
-                        
+
                         log('Paused both tabs:', senderTabId, 'and', pairedTabId);
                         return { success: true, pausedTabs: [senderTabId, pairedTabId] };
                     }
-                    
+
                     return { success: false, error: 'No paired tabs found' };
                 
                 case 'PING':
