@@ -15,6 +15,9 @@
         contextValid: true
     };
 
+    // Unique session ID to track if this script instance has set up listeners
+    const SESSION_ID = Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+
     /**
      * Check if extension context is still valid
      */
@@ -27,19 +30,32 @@
     }
 
     function log(message, ...args) {
-        if (!state.contextValid || !isContextValid()) {
-            state.contextValid = false;
-            return;
+        try {
+            if (!state.contextValid || !isContextValid()) {
+                state.contextValid = false;
+                return;
+            }
+            console.log(`[TogglePlay Content-${state.tabId || 'unknown'}]`, message, ...args);
+        } catch (e) {
+            // Silently ignore - extension context is invalid
         }
-        console.log(`[TogglePlay Content-${state.tabId || 'unknown'}]`, message, ...args);
     }
 
     function error(message, ...args) {
-        if (!state.contextValid || !isContextValid()) {
-            state.contextValid = false;
-            return;
+        try {
+            if (!isContextValid()) {
+                state.contextValid = false;
+                return;
+            }
+            const tag = `[TogglePlay Content-${state.tabId || 'unknown'}]`;
+            if (args.length > 0) {
+                console.error(tag, message, args);
+            } else {
+                console.error(tag, message);
+            }
+        } catch (e) {
+            // Silently ignore - extension context is invalid
         }
-        console.error(`[TogglePlay Content-${state.tabId || 'unknown'}]`, message, ...args);
     }
 
     /**
@@ -50,7 +66,7 @@
             state.contextValid = false;
             return false;
         }
-        
+
         try {
             const response = await chrome.runtime.sendMessage({ type: 'GET_TAB_ID' });
             if (response?.tabId) {
@@ -95,7 +111,7 @@
             state.contextValid = false;
             return null;
         }
-        
+
         try {
             const response = await chrome.runtime.sendMessage({
                 ...message,
@@ -104,7 +120,7 @@
             return response;
         } catch (err) {
             // Check if this is a context invalidation error
-            if (err.message?.includes('Extension context invalidated') || 
+            if (err.message?.includes('Extension context invalidated') ||
                 err.message?.includes('disconnected')) {
                 state.contextValid = false;
             }
@@ -116,13 +132,13 @@
     /**
      * Notify state change (debounced)
      */
-    function notifyStateChange(newState) {
+    function notifyStateChange(newState, force = false) {
         // Don't notify if context is invalid
         if (!isContextValid()) {
             state.contextValid = false;
             return;
         }
-        
+
         if (state.debounceTimer) {
             clearTimeout(state.debounceTimer);
         }
@@ -132,15 +148,21 @@
                 state.contextValid = false;
                 return;
             }
-            
-            // Always update and notify (removed the !== check that was blocking repeated states)
+
+            // Only notify if state actually changed (unless forced)
+            if (!force && state.isPlaying === newState) {
+                console.log('[TogglePlay Content] Skipping notify - state unchanged:', newState);
+                return;
+            }
+
             state.isPlaying = newState;
-            log('Notifying state change:', newState ? 'PLAYING' : 'PAUSED');
-            
-            await sendMessage({
+            console.log('[TogglePlay Content] Notifying state change:', newState ? 'PLAYING' : 'PAUSED');
+
+            const response = await sendMessage({
                 type: 'PLAYBACK_STATE_CHANGED',
                 isPlaying: newState
             });
+            console.log('[TogglePlay Content] Message sent, response:', response);
         }, 300);
     }
 
@@ -149,22 +171,15 @@
      */
     function setupVideoListeners(video) {
         if (!video) return;
-        
-        // Use a unique key for this script instance to avoid conflicts with old listeners
-        const listenerKey = `togglePlayListeners_${Date.now()}`;
-        
-        // Remove old listener flag if exists (from previous extension context)
-        if (video.hasSimpleToggleListeners && !video[listenerKey]) {
-            log('Detected old listeners, setting up fresh ones');
-        }
 
-        if (video[listenerKey]) return; // Already set up by THIS instance
+        const listenerKey = `togglePlayListenersSet_${SESSION_ID}`;
+
+        if (video[listenerKey]) return;
 
         log('Setting up video listeners');
 
         ['play', 'pause', 'ended'].forEach(eventType => {
             video.addEventListener(eventType, () => {
-                // Always check context before processing
                 if (!isContextValid()) {
                     state.contextValid = false;
                     return;
@@ -176,12 +191,12 @@
         });
 
         video[listenerKey] = true;
-        video.hasSimpleToggleListeners = true;
         state.currentVideo = video;
-        
-        // Send initial state
+
+        // Send initial state - force send to ensure background knows our state
         const initialState = getPlaybackState(video);
-        notifyStateChange(initialState);
+        console.log('[TogglePlay Content] Sending initial state:', initialState);
+        notifyStateChange(initialState, true);
     }
 
     /**
@@ -251,12 +266,11 @@
      * Check for video periodically
      */
     function checkForVideo() {
-        // Stop checking if context is invalid
         if (!isContextValid()) {
             state.contextValid = false;
             return;
         }
-        
+
         const video = findVideoElement();
         if (video && video !== state.currentVideo) {
             log('New video found, setting up listeners');
@@ -275,26 +289,25 @@
                 state.contextValid = false;
                 return;
             }
-            
+
             // Check if B key is pressed (not in an input field)
-            if (event.key.toLowerCase() === 'b' && 
+            if (event.key.toLowerCase() === 'b' &&
                 !event.ctrlKey && !event.altKey && !event.metaKey &&
                 !['INPUT', 'TEXTAREA'].includes(event.target.tagName) &&
                 !event.target.isContentEditable) {
-                
+
                 // Prevent YouTube's default B key behavior
                 event.preventDefault();
                 event.stopPropagation();
-                
+
                 log('B key pressed - pausing both tabs');
-                
-                // First, pause the current tab's video directly
+
                 const video = findVideoElement();
                 if (video && !video.paused) {
                     video.pause();
                     log('Paused current tab video directly');
                 }
-                
+
                 try {
                     const response = await sendMessage({ type: 'PAUSE_BOTH' });
                     if (response?.success) {
@@ -307,7 +320,7 @@
                 }
             }
         }, true); // Use capture phase
-        
+
         log('Keyboard shortcuts set up');
     }
 
@@ -317,12 +330,12 @@
     async function initialize() {
         try {
             log('Initializing content script');
-            
+
             await initializeTabId();
-            
+
             // Set up keyboard shortcuts
             setupKeyboardShortcuts();
-            
+
             // Check for video every 2 seconds, but stop if context becomes invalid
             const intervalId = setInterval(() => {
                 if (!isContextValid()) {
@@ -332,10 +345,10 @@
                 }
                 checkForVideo();
             }, 2000);
-            
+
             // Initial check
             setTimeout(checkForVideo, 1000);
-            
+
             log('Content script initialized');
         } catch (err) {
             error('Failed to initialize:', err);
