@@ -1,6 +1,6 @@
 # TogglePlay Extension
 
-A Microsoft Edge extension that automatically toggles play/pause between YouTube, YouTube Music, and Spotify tabs for seamless media experience.
+A browser extension that automatically toggles play/pause between YouTube, YouTube Music, and Spotify tabs for seamless media experience.
 
 ## Features
 
@@ -8,7 +8,6 @@ A Microsoft Edge extension that automatically toggles play/pause between YouTube
 - **Cross-Platform Sync**: Pair any combination of YouTube, YouTube Music, and Spotify tabs
 - **Bidirectional Control**: Either tab can control the other
 - **Single Pair Mode**: Only one active pair at a time for simplicity
-- **Persistent Settings**: Pairs and settings are saved across browser sessions
 - **Smart Detection**: Automatically detects media elements and state changes
 - **Robust Error Handling**: Handles tab refreshes, navigation, and connection issues
 - **Keyboard Shortcut**: Press 'B' to pause both tabs instantly
@@ -68,7 +67,7 @@ TogglePlay/
 - **Content Scripts**: Detect playback state changes on YouTube, YouTube Music, and Spotify pages
 - **Background Service Worker**: Manages communication between tabs
 - **Popup Interface**: User controls for pairing and settings
-- **Storage**: Persists pairs and settings using Chrome storage API
+
 
 ### Key Features:
 - Debounced state change detection (300ms for YouTube, 150ms for YouTube Music)
