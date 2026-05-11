@@ -1,12 +1,11 @@
 {
   "manifest_version": 3,
   "name": "TogglePlay",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Automatically toggles play/pause between YouTube, YouTube Music, and Spotify tabs for seamless media experience",
   
   "permissions": [
-    "tabs",
-    "storage"
+    "tabs"
   ],
   
   "host_permissions": [
