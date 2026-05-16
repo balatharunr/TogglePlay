@@ -3,60 +3,77 @@
   "name": "TogglePlay",
   "version": "1.2.1",
   "description": "Automatically toggles play/pause between YouTube, YouTube Music, and Spotify tabs for seamless media experience",
-  
+
   "permissions": [
     "tabs"
   ],
-  
+
   "host_permissions": [
     "https://www.youtube.com/*",
     "https://youtube.com/*",
     "https://music.youtube.com/*",
     "https://open.spotify.com/*"
   ],
-  
+
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "src/background/service-worker.js"
   },
-  
+
   "content_scripts": [
     {
       "matches": [
         "https://www.youtube.com/*",
         "https://youtube.com/*"
       ],
-      "js": ["content.js"],
+      "js": [
+        "src/shared/config.js",
+        "src/content/shared/context.js",
+        "src/content/shared/messaging.js",
+        "src/content/shared/keyboard.js",
+        "src/content/youtube/index.js"
+      ],
       "run_at": "document_idle"
     },
     {
       "matches": [
         "https://music.youtube.com/*"
       ],
-      "js": ["content-ytmusic.js"],
+      "js": [
+        "src/shared/config.js",
+        "src/content/shared/context.js",
+        "src/content/shared/messaging.js",
+        "src/content/ytmusic/index.js"
+      ],
       "run_at": "document_idle"
     },
     {
       "matches": [
         "https://open.spotify.com/*"
       ],
-      "js": ["content-spotify.js"],
+      "js": [
+        "src/shared/config.js",
+        "src/content/shared/context.js",
+        "src/content/shared/messaging.js",
+        "src/content/shared/keyboard.js",
+        "src/content/spotify/index.js"
+      ],
       "run_at": "document_idle"
     }
   ],
-  
+
   "icons": {
-    "16": "icon.png",
-    "48": "icon.png",
-    "128": "icon.png"
+    "16": "assets/icon.png",
+    "48": "assets/icon.png",
+    "128": "assets/icon.png"
   },
 
   "action": {
-    "default_popup": "popup.html",
+    "default_popup": "src/popup/popup.html",
     "default_title": "TogglePlay",
     "default_icon": {
-      "16": "icon.png",
-      "48": "icon.png",
-      "128": "icon.png"
+      "16": "assets/icon.png",
+      "48": "assets/icon.png",
+      "128": "assets/icon.png"
     }
   }
 }

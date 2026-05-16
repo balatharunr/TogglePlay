@@ -48,25 +48,44 @@ A browser extension that automatically toggles play/pause between YouTube, YouTu
 
 ```
 TogglePlay/
-├── manifest.json           # Extension configuration
-├── background.js           # Service worker for tab communication
-├── content.js              # YouTube page integration
-├── content-ytmusic.js      # YouTube Music page integration
-├── content-spotify.js      # Spotify web player integration
-├── popup.html              # Extension popup interface
-├── popup.css               # Popup styling
-├── popup.js                # Popup functionality
-├── icon.png                # Extension icon
-├── prompt.md               # Development prompts
-└── README.md               # This file
+├── manifest.json              # Extension entry (paths point into src/)
+├── privacy-policy.html
+├── assets/
+│   └── icon.png
+├── src/
+│   ├── shared/                # Config + platform URL helpers
+│   ├── background/            # Service worker (orchestration, pairing, sync)
+│   ├── content/
+│   │   ├── shared/            # Content-script messaging & shortcuts
+│   │   ├── youtube/
+│   │   ├── ytmusic/
+│   │   └── spotify/
+│   └── popup/                 # Popup UI
+├── scripts/
+│   └── package.sh             # Build store/sideload .zip
+├── docs/
+│   └── METHODS-AUDIT.md
+└── README.md
 ```
+
+### Packaging for Chrome / Edge
+
+From the project root:
+
+```bash
+chmod +x scripts/package.sh
+./scripts/package.sh
+```
+
+This writes `dist/toggleplay-v<version>.zip` with `manifest.json` at the zip root (required for Web Store upload and “Load unpacked” after unzip).
 
 ## Technical Details
 
 ### Architecture:
-- **Content Scripts**: Detect playback state changes on YouTube, YouTube Music, and Spotify pages
-- **Background Service Worker**: Manages communication between tabs
-- **Popup Interface**: User controls for pairing and settings
+- **Content scripts** (`src/content/<platform>/`): Per-site playback detection and control
+- **Background service worker** (`src/background/`): Tab pairing, sync orchestration, messaging
+- **Popup** (`src/popup/`): Pairing UI and enable/disable
+- **Shared** (`src/shared/`): Platform detection and shared constants
 
 
 ### Key Features:

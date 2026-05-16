@@ -201,7 +201,7 @@ async function loadActivePairs() {
 function renderCurrentTab(tab) {
     const container = elements.currentTab;
     
-    if (!tab || !tab.url || !isMediaUrl(tab.url)) {
+    if (!tab || !tab.url || !TogglePlayPlatforms.isMediaUrl(tab.url)) {
         container.innerHTML = `
             <div class="tab-info">
                 <span class="tab-title">No media tab active</span>
@@ -215,8 +215,8 @@ function renderCurrentTab(tab) {
     }
     
     const title = tab.title || 'Media';
-    const sourceType = getSourceType(tab.url);
-    const icon = getSourceIcon(sourceType);
+    const sourceType = TogglePlayPlatforms.getSourceType(tab.url);
+    const icon = TogglePlayPlatforms.getSourceIcon(sourceType);
     let displayUrl = '';
     
     try {
@@ -257,8 +257,8 @@ function renderAvailableTabs() {
     
     const tabsHtml = state.availableTabs.map(tab => {
         const title = tab.title || 'Media';
-        const sourceType = tab.sourceType || getSourceType(tab.url);
-        const icon = getSourceIcon(sourceType);
+        const sourceType = tab.sourceType || TogglePlayPlatforms.getSourceType(tab.url);
+        const icon = TogglePlayPlatforms.getSourceIcon(sourceType);
         let displayUrl = '';
         
         try {
@@ -316,8 +316,8 @@ function renderActivePairs() {
     const pairedTab = firstPair.pairedWith[0];
     const title1 = firstPair.title || 'Media';
     const title2 = pairedTab.title || 'Media';
-    const icon1 = getSourceIcon(firstPair.sourceType || getSourceType(firstPair.url));
-    const icon2 = getSourceIcon(pairedTab.sourceType || getSourceType(pairedTab.url));
+    const icon1 = TogglePlayPlatforms.getSourceIcon(firstPair.sourceType || TogglePlayPlatforms.getSourceType(firstPair.url));
+    const icon2 = TogglePlayPlatforms.getSourceIcon(pairedTab.sourceType || TogglePlayPlatforms.getSourceType(pairedTab.url));
     
     const pairHtml = `
         <div class="pair-item">
@@ -339,62 +339,6 @@ function renderActivePairs() {
     `;
     
     container.innerHTML = pairHtml;
-}
-
-/**
- * Check if URL is a YouTube URL
- */
-function isYouTubeUrl(url) {
-    return url && !url.includes('music.youtube.com') && (
-        url.includes('youtube.com/watch') ||
-        url.includes('youtu.be/') ||
-        (url.includes('youtube.com') && (
-            url.includes('/watch?') ||
-            url.includes('/shorts/') ||
-            url.includes('/embed/')
-        ))
-    );
-}
-
-/**
- * Check if URL is a YouTube Music URL
- */
-function isYTMusicUrl(url) {
-    return url && url.includes('music.youtube.com');
-}
-
-/**
- * Check if URL is a Spotify URL
- */
-function isSpotifyUrl(url) {
-    return url && url.includes('open.spotify.com');
-}
-
-/**
- * Check if URL is a media URL (YouTube, YouTube Music, or Spotify)
- */
-function isMediaUrl(url) {
-    return isYouTubeUrl(url) || isYTMusicUrl(url) || isSpotifyUrl(url);
-}
-
-/**
- * Get source type from URL
- */
-function getSourceType(url) {
-    if (isYTMusicUrl(url)) return 'ytmusic';
-    if (isYouTubeUrl(url)) return 'youtube';
-    if (isSpotifyUrl(url)) return 'spotify';
-    return null;
-}
-
-/**
- * Get icon for source type
- */
-function getSourceIcon(sourceType) {
-    if (sourceType === 'youtube') return '▶️';
-    if (sourceType === 'ytmusic') return '🎧';
-    if (sourceType === 'spotify') return '🎵';
-    return '🎶';
 }
 
 /**
