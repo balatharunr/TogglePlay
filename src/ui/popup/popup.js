@@ -597,7 +597,7 @@ function setupEventListeners() {
     // Listen for background updates
     if (chrome.runtime && chrome.runtime.onMessage) {
         chrome.runtime.onMessage.addListener((msg) => {
-            if (msg.type === 'PAIRS_UPDATED') {
+            if (msg.type === 'PAIRS_UPDATED' || msg.type === 'TABS_UPDATED') {
                 log('Received instant update event from background');
                 loadActivePairs();
                 loadAvailableTabs();
