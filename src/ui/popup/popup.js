@@ -297,8 +297,10 @@ function renderAvailableTabs() {
             </div>
         `;
     }).join('');
-    
-    container.innerHTML = tabsHtml;
+    const newHtml = tabsHtml;
+    if (container.innerHTML !== newHtml) {
+        container.innerHTML = newHtml;
+    }
 }
 
 /**
@@ -347,8 +349,9 @@ function renderActivePairs() {
             </button>
         </div>
     `;
-    
-    container.innerHTML = pairHtml;
+    if (container.innerHTML !== pairHtml) {
+        container.innerHTML = pairHtml;
+    }
 }
 
 /**
@@ -593,14 +596,23 @@ function setupEventListeners() {
             }
         }
     }, 10000);
-    
+
+    // Debounced UI refresh to prevent flickering
+    let refreshTimeout = null;
+    function debouncedRefresh() {
+        if (refreshTimeout) clearTimeout(refreshTimeout);
+        refreshTimeout = setTimeout(() => {
+            log('Running debounced UI refresh');
+            loadActivePairs();
+            loadAvailableTabs();
+        }, 150);
+    }
+
     // Listen for background updates
     if (chrome.runtime && chrome.runtime.onMessage) {
         chrome.runtime.onMessage.addListener((msg) => {
             if (msg.type === 'PAIRS_UPDATED' || msg.type === 'TABS_UPDATED') {
-                log('Received instant update event from background');
-                loadActivePairs();
-                loadAvailableTabs();
+                debouncedRefresh();
             }
         });
     }

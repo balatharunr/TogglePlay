@@ -70,17 +70,33 @@ function registerBackgroundMessageHandler() {
           }
 
           case TogglePlayMessages.GET_PAIRS: {
-            var pairs = Array.from(state.pairs.entries()).map(function (entry) {
-              var tabId = entry[0];
-              var pairInfo = entry[1];
-              return {
+            var pairs = [];
+            var entries = Array.from(state.pairs.entries());
+            var stateChanged = false;
+            
+            for (var i = 0; i < entries.length; i++) {
+              var tabId = entries[i][0];
+              var pairInfo = entries[i][1];
+              try {
+                var tab = await chrome.tabs.get(tabId);
+                if (tab && tab.title && pairInfo.title !== tab.title) {
+                  if (typeof updatePairMetadata === 'function') {
+                    await updatePairMetadata(tabId, tab.title, tab.url);
+                    stateChanged = true;
+                  }
+                }
+              } catch (e) {
+                // Tab might be closed, lifecycle will clean it up
+              }
+              pairs.push({
                 tabId: tabId,
                 title: pairInfo.title,
                 url: pairInfo.url,
                 sourceType: pairInfo.sourceType,
                 pairedWith: pairInfo.pairedWith
-              };
-            });
+              });
+            }
+            
             return {
               success: true,
               pairs: pairs,
