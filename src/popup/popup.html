@@ -8,21 +8,32 @@
 </head>
 <body>
   <div class="container">
+    <!-- ── Header ── -->
     <div class="header">
-      <h1>TogglePlay</h1>
-      <div class="toggle-container">
-        <label class="toggle-switch">
-          <input type="checkbox" id="enableToggle" aria-label="Enable Auto-Toggle">
-          <span class="slider"></span>
-        </label>
-        <span class="toggle-label">Enable</span>
+      <div class="header-brand">
+        <img src="../../assets/icon.png" alt="TogglePlay" class="header-logo">
+        <h1>TogglePlay</h1>
+      </div>
+      <div class="header-controls">
+        <div class="toggle-container">
+          <label class="toggle-switch">
+            <input type="checkbox" id="enableToggle" aria-label="Enable Auto-Toggle">
+            <span class="slider"></span>
+          </label>
+          <span class="toggle-label">Enable</span>
+        </div>
       </div>
     </div>
 
+    <!-- ── Content ── -->
     <div class="content">
       <div class="tab-selection-container">
+        <!-- Current Tab -->
         <div class="tab-column">
-          <h3>Tab 1</h3>
+          <div class="section-label">
+            <svg class="section-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            Current Tab
+          </div>
           <div class="tab-item" id="currentTab">
             <div class="tab-info">
               <span class="tab-title">Loading current tab...</span>
@@ -34,8 +45,21 @@
           </div>
         </div>
 
+        <!-- Connection Divider -->
+        <div class="connection-divider">
+          <span class="line"></span>
+          <span class="icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3v18"/><path d="m3 7 4-4 4 4"/><path d="M17 21V3"/><path d="m13 17 4 4 4-4"/></svg>
+          </span>
+          <span class="line"></span>
+        </div>
+
+        <!-- Available Tabs -->
         <div class="tab-column">
-          <h3>Tab 2</h3>
+          <div class="section-label">
+            <svg class="section-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+            Pair With
+          </div>
           <div class="tab-selection">
             <div id="availableTabs" class="available-tabs">
               <div class="loading-message">Loading available tabs...</div>
@@ -44,14 +68,19 @@
         </div>
       </div>
 
+      <!-- Active Pairs -->
       <div class="pairs-container">
-        <h3>Active Pairs</h3>
+        <div class="section-label" style="margin-bottom: 8px;">
+          <svg class="section-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          Active Pair
+        </div>
         <div id="togglePairs" class="toggle-pairs">
           <div class="no-pairs">No toggle pairs configured</div>
         </div>
       </div>
     </div>
-    
+
+    <!-- ── Footer ── -->
     <div class="status-bar">
       <div class="connection-status">
         <span id="statusIndicator" class="status-dot"></span>

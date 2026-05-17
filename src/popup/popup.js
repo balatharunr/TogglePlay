@@ -202,6 +202,7 @@ function renderCurrentTab(tab) {
     const container = elements.currentTab;
     
     if (!tab || !tab.url || !TogglePlayPlatforms.isMediaUrl(tab.url)) {
+        container.classList.remove('has-media');
         container.innerHTML = `
             <div class="tab-info">
                 <span class="tab-title">No media tab active</span>
@@ -213,6 +214,8 @@ function renderCurrentTab(tab) {
         `;
         return;
     }
+    
+    container.classList.add('has-media');
     
     const title = tab.title || 'Media';
     const sourceType = TogglePlayPlatforms.getSourceType(tab.url);
