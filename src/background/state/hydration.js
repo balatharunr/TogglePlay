@@ -12,9 +12,13 @@ async function hydrateState() {
     state.syncMode = local.syncMode;
 
     var pairs = await loadSessionPairs();
-    state.pairs = pairs;
+    // Avoid a hydration race wiping pairs added before storage finished writing.
+    if (pairs.size > 0 || state.pairs.size === 0) {
+      state.pairs = pairs;
+    }
 
     await pruneInvalidPairs();
+    await loadPersistedLogs();
     togglePlayLog('State hydrated — pairs:', state.pairs.size, 'enabled:', state.isEnabled, 'mode:', state.syncMode);
   } catch (err) {
     togglePlayError('Failed to hydrate state:', err);
@@ -24,6 +28,9 @@ async function hydrateState() {
 }
 
 function ensureHydrated() {
+  if (togglePlayBackgroundState.hydrated) {
+    return Promise.resolve();
+  }
   if (!togglePlayHydrationPromise) {
     togglePlayHydrationPromise = hydrateState();
   }
@@ -36,11 +43,11 @@ async function pruneInvalidPairs() {
   var removed = false;
 
   for (var i = 0; i < tabIds.length; i++) {
-    var tabId = tabIds[i];
+    var tabId = TogglePlayStorageSerializers.normalizeTabId(tabIds[i]);
     try {
       var tab = await chrome.tabs.get(tabId);
       var pairInfo = state.pairs.get(tabId);
-      if (!TogglePlayPlatforms.isMediaUrl(tab.url)) {
+      if (TogglePlayPlatforms.getSourceType(tab.url) === null) {
         state.pairs.delete(tabId);
         removed = true;
         continue;

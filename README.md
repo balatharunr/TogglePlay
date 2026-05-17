@@ -52,15 +52,14 @@ TogglePlay/
 ├── assets/
 │   └── icon.png
 ├── src/
-│   ├── shared/                # Config + platform URL helpers
-│   ├── background/            # Service worker (orchestration, pairing, sync)
+│   ├── core/                  # Extension-wide config, messages, platforms
+│   ├── background/            # Service worker (state, pairing, sync, messaging)
 │   ├── content/
-│   │   ├── shared/            # Content-script messaging & shortcuts
-│   │   ├── youtube/
-│   │   ├── ytmusic/
-│   │   └── spotify/
-│   ├── popup/                 # Popup UI
-│   └── privacy/               # Privacy Policy page
+│   │   ├── lib/               # Content-script messaging & shortcuts
+│   │   └── platforms/         # Per-site adapters (youtube, ytmusic, spotify)
+│   └── ui/
+│       ├── popup/             # Toolbar popup
+│       └── privacy/           # Privacy policy page
 ├── scripts/
 │   └── package.sh             # Build store/sideload .zip
 ├── docs/
@@ -82,10 +81,10 @@ This writes `dist/toggleplay-v<version>.zip` with `manifest.json` at the zip roo
 ## Technical Details
 
 ### Architecture:
-- **Content scripts** (`src/content/<platform>/`): Per-site playback detection and control
+- **Content scripts** (`src/content/platforms/<site>/`): Per-site playback detection and control
 - **Background service worker** (`src/background/`): Tab pairing, sync orchestration, messaging
-- **Popup** (`src/popup/`): Pairing UI and enable/disable
-- **Shared** (`src/shared/`): Platform detection and shared constants
+- **Popup** (`src/ui/popup/`): Pairing UI and enable/disable
+- **Core** (`src/core/`): Platform detection and shared constants
 
 
 ### Key Features:

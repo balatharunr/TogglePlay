@@ -7,7 +7,12 @@ function registerTabLifecycleListeners() {
   });
 
   chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
-    if (changeInfo.url && tab.url && !TogglePlayPlatforms.isMediaUrl(tab.url)) {
+    // Only react to url changes (which happen when navigation starts).
+    if (!changeInfo.url) {
+      return;
+    }
+    // If the new URL is not on a supported platform, remove the pair.
+    if (TogglePlayPlatforms.getSourceType(changeInfo.url) === null) {
       removePairsInvolvingTab(tabId);
     }
   });
@@ -15,16 +20,17 @@ function registerTabLifecycleListeners() {
 
 async function removePairsInvolvingTab(tabId) {
   var state = togglePlayBackgroundState;
-  if (!state.pairs.has(tabId)) {
+  tabId = TogglePlayStorageSerializers.normalizeTabId(tabId);
+  if (!hasPairForTab(tabId)) {
     return;
   }
 
-  var pairInfo = state.pairs.get(tabId);
+  var pairInfo = getPairForTab(tabId);
   var partnerIds = [];
 
   if (pairInfo && pairInfo.pairedWith) {
     pairInfo.pairedWith.forEach(function (partner) {
-      partnerIds.push(partner.tabId);
+      partnerIds.push(TogglePlayStorageSerializers.normalizeTabId(partner.tabId));
     });
   }
 

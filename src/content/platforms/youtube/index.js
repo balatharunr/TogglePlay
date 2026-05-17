@@ -19,12 +19,16 @@
     return state.contextValid && TogglePlayContent.isContextValid();
   }
 
-  var logger = TogglePlayContent.createLogger(
-    'TogglePlay Content-' + (state.tabId || 'unknown'),
-    isActive
-  );
+  function logPrefix() {
+    return 'TogglePlay Content-' + (state.tabId || 'pending');
+  }
 
-  var sendMessage = TogglePlayContentMessaging.createSendMessage(state, logger);
+  var logger = TogglePlayContent.createLogger(logPrefix, isActive);
+
+  var sendMessage = TogglePlayContentMessaging.createSendMessage(state, logger, {
+    source: 'youtube',
+    logSendErrors: true
+  });
 
   function findVideoElement() {
     var video = document.querySelector('video');
@@ -58,10 +62,19 @@
 
       state.isPlaying = newState;
       logger.log('Notifying state change:', newState ? 'PLAYING' : 'PAUSED');
-      await sendMessage({
+      var response = await sendMessage({
         type: TogglePlayMessages.PLAYBACK_STATE_CHANGED,
         isPlaying: newState
       });
+      if (!response) {
+        logger.error('Background did not respond (reload extension or re-pair tabs)');
+        return;
+      }
+      if (response.skipped) {
+        logger.log('Sync skipped:', response.skipped);
+      } else if (response.partnerAction) {
+        logger.log('Sync applied:', response.partnerAction, 'on partner tab', response.pairedTabId);
+      }
     }, TogglePlayConfig.DEBOUNCE_MS.YOUTUBE);
   }
 
@@ -85,7 +98,12 @@
 
     video[listenerKey] = true;
     state.currentVideo = video;
-    notifyStateChange(getPlaybackState(video), true);
+    // Only report initial state when already playing (avoid mirror mode starting partner on load).
+    var initialPlaying = getPlaybackState(video);
+    state.isPlaying = initialPlaying;
+    if (initialPlaying) {
+      notifyStateChange(true, true);
+    }
   }
 
   async function controlPlayback(action) {

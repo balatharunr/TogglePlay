@@ -17,6 +17,8 @@ var TogglePlayMessages = (function () {
     REMOVE_PAIR: 'REMOVE_PAIR',
     CLEAR_ALL_PAIRS: 'CLEAR_ALL_PAIRS',
     SET_ENABLED: 'SET_ENABLED',
-    SET_SYNC_MODE: 'SET_SYNC_MODE'
+    SET_SYNC_MODE: 'SET_SYNC_MODE',
+    REMOTE_LOG: 'REMOTE_LOG',
+    GET_LOGS: 'GET_LOGS'
   };
 })();

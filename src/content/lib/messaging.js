@@ -52,7 +52,7 @@ var TogglePlayContentMessaging = (function () {
         )) {
           TogglePlayContent.markContextInvalid(state);
         } else if (options.logSendErrors) {
-          logger.error('Send message failed:', err);
+          logger.error('Send message failed:', err.message || err);
         }
         return null;
       }

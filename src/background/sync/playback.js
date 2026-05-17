@@ -1,59 +1,88 @@
 async function handlePlaybackStateChange(tabId, isPlaying) {
   var state = togglePlayBackgroundState;
+  tabId = TogglePlayStorageSerializers.normalizeTabId(tabId);
 
   if (!state.isEnabled) {
     togglePlayLog('Extension disabled');
-    return;
+    return { success: true, skipped: 'disabled' };
   }
 
   if (state.controlledTabs.has(tabId)) {
     togglePlayLog('Ignoring state change from controlled tab ' + tabId);
     state.controlledTabs.delete(tabId);
-    return;
+    return { success: true, skipped: 'echo' };
   }
 
-  var pairInfo = state.pairs.get(tabId);
+  var pairInfo = getPairForTab(tabId);
   if (!pairInfo || !pairInfo.pairedWith || pairInfo.pairedWith.length === 0) {
-    togglePlayLog('No pair found for tab', tabId);
-    return;
+    togglePlayLog('No pair found for tab', tabId, '(pairs in memory:', state.pairs.size + ')');
+    return { success: true, skipped: 'no_pair' };
   }
 
   var action = TogglePlaySyncModes.resolveAction(state.syncMode, isPlaying);
   if (action === TogglePlaySyncModes.ACTIONS.NONE) {
     togglePlayLog('Exclusive mode: pause on tab ' + tabId + ' — no partner action');
-    return;
+    return { success: true, skipped: 'exclusive_pause' };
   }
 
   togglePlayLog('Tab ' + tabId + ' is now:', isPlaying ? 'PLAYING' : 'PAUSED', '→', action);
 
-  var pairedTabId = pairInfo.pairedWith[0].tabId;
+  var pairedTabId = TogglePlayStorageSerializers.normalizeTabId(pairInfo.pairedWith[0].tabId);
   var controlAction = action === TogglePlaySyncModes.ACTIONS.PLAY_PARTNER ? 'PLAY' : 'PAUSE';
 
   try {
     state.controlledTabs.add(pairedTabId);
-    await sendMessageToTab(pairedTabId, {
+    var response = await sendMessageToTab(pairedTabId, {
       type: TogglePlayMessages.CONTROL_PLAYBACK,
       action: controlAction
     });
 
+    if (!response) {
+      togglePlayLog(
+        'Partner tab ' + pairedTabId + ' did not respond — refresh that tab after installing/reloading the extension'
+      );
+      return {
+        success: false,
+        error: 'partner_unreachable',
+        pairedTabId: pairedTabId
+      };
+    }
+
+    if (response.success === false) {
+      togglePlayLog('Partner control failed:', response.reason || response.error);
+      return {
+        success: false,
+        error: response.reason || response.error,
+        pairedTabId: pairedTabId
+      };
+    }
+
     setTimeout(function () {
       state.controlledTabs.delete(pairedTabId);
     }, TogglePlayConfig.CONTROLLED_TAB_TIMEOUT_MS);
+
+    return {
+      success: true,
+      partnerAction: controlAction,
+      pairedTabId: pairedTabId
+    };
   } catch (err) {
     state.controlledTabs.delete(pairedTabId);
     togglePlayError('Failed to control paired tab:', err);
+    return { success: false, error: err.message, pairedTabId: pairedTabId };
   }
 }
 
 async function handlePauseBoth(senderTabId) {
   var state = togglePlayBackgroundState;
-  var senderPairInfo = state.pairs.get(senderTabId);
+  senderTabId = TogglePlayStorageSerializers.normalizeTabId(senderTabId);
+  var senderPairInfo = getPairForTab(senderTabId);
 
   if (!senderPairInfo || !senderPairInfo.pairedWith || senderPairInfo.pairedWith.length === 0) {
     return { success: false, error: 'No paired tabs found' };
   }
 
-  var pairedTabId = senderPairInfo.pairedWith[0].tabId;
+  var pairedTabId = TogglePlayStorageSerializers.normalizeTabId(senderPairInfo.pairedWith[0].tabId);
   var wasEnabled = state.isEnabled;
   state.isEnabled = false;
 

@@ -12,8 +12,8 @@ required=(
   manifest.json
   assets/icon.png
   src/background/service-worker.js
-  src/popup/popup.html
-  src/privacy/privacy.html
+  src/ui/popup/popup.html
+  src/ui/privacy/privacy.html
 )
 
 for path in "${required[@]}"; do

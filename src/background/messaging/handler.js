@@ -39,15 +39,21 @@ function registerBackgroundMessageHandler() {
           case TogglePlayMessages.GET_TAB_ID:
             return { tabId: sender.tab && sender.tab.id };
 
-          case TogglePlayMessages.PLAYBACK_STATE_CHANGED:
+          case TogglePlayMessages.PLAYBACK_STATE_CHANGED: {
+            if (!sender.tab || sender.tab.id === undefined) {
+              togglePlayError('PLAYBACK_STATE_CHANGED missing sender.tab');
+              return { success: false, error: 'no_sender_tab' };
+            }
             togglePlayLog(
               'Playback state change:',
               message.isPlaying,
               'from tab:',
-              sender.tab && sender.tab.id
+              sender.tab.id,
+              'source:',
+              message.source
             );
-            await handlePlaybackStateChange(sender.tab.id, message.isPlaying);
-            return { success: true };
+            return await handlePlaybackStateChange(sender.tab.id, message.isPlaying);
+          }
 
           case TogglePlayMessages.GET_TABS: {
             var mediaTabs = await getAllMediaTabs();
@@ -86,11 +92,14 @@ function registerBackgroundMessageHandler() {
           case TogglePlayMessages.ADD_PAIR:
             return await addPair(message.tabId1, message.tabId2);
 
-          case TogglePlayMessages.REMOVE_PAIR:
-            state.pairs.delete(message.tabId1);
-            state.pairs.delete(message.tabId2);
+          case TogglePlayMessages.REMOVE_PAIR: {
+            var id1 = TogglePlayStorageSerializers.normalizeTabId(message.tabId1);
+            var id2 = TogglePlayStorageSerializers.normalizeTabId(message.tabId2);
+            state.pairs.delete(id1);
+            state.pairs.delete(id2);
             await persistBackgroundState({ pairs: true });
             return { success: true };
+          }
 
           case TogglePlayMessages.CLEAR_ALL_PAIRS:
             state.pairs.clear();
@@ -116,6 +125,13 @@ function registerBackgroundMessageHandler() {
 
           case TogglePlayMessages.PING:
             return { success: true, pong: true };
+
+          case TogglePlayMessages.REMOTE_LOG:
+            handleRemoteLog(message.level || 'info', message.message);
+            return { success: true };
+
+          case TogglePlayMessages.GET_LOGS:
+            return { success: true, logs: getTogglePlayLogs() };
 
           default:
             return { success: false, error: 'Unknown message type' };

@@ -4,6 +4,27 @@
 var TogglePlayStorageSerializers = (function () {
   'use strict';
 
+  function normalizeTabId(id) {
+    if (id === null || id === undefined) {
+      return id;
+    }
+    var n = Number(id);
+    return Number.isNaN(n) ? id : n;
+  }
+
+  function normalizePairInfo(pairInfo) {
+    if (!pairInfo || !pairInfo.pairedWith) {
+      return pairInfo;
+    }
+    return Object.assign({}, pairInfo, {
+      pairedWith: pairInfo.pairedWith.map(function (partner) {
+        return Object.assign({}, partner, {
+          tabId: normalizeTabId(partner.tabId)
+        });
+      })
+    });
+  }
+
   function setToArray(set) {
     return set ? Array.from(set) : [];
   }
@@ -26,13 +47,15 @@ var TogglePlayStorageSerializers = (function () {
     }
     entries.forEach(function (entry) {
       if (entry && entry.length >= 2) {
-        map.set(entry[0], entry[1]);
+        map.set(normalizeTabId(entry[0]), normalizePairInfo(entry[1]));
       }
     });
     return map;
   }
 
   return {
+    normalizeTabId: normalizeTabId,
+    normalizePairInfo: normalizePairInfo,
     setToArray: setToArray,
     arrayToSet: arrayToSet,
     mapToEntries: mapToEntries,

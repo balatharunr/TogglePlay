@@ -1,5 +1,7 @@
 async function addPair(tabId1, tabId2) {
   try {
+    tabId1 = TogglePlayStorageSerializers.normalizeTabId(tabId1);
+    tabId2 = TogglePlayStorageSerializers.normalizeTabId(tabId2);
     togglePlayLog('Adding pair:', tabId1, '↔', tabId2);
 
     var tabResults = await Promise.all([

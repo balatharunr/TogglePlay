@@ -2,31 +2,28 @@
  * TogglePlay — background service worker entry point.
  */
 importScripts(
-  '../shared/config.js',
-  '../shared/messages.js',
-  '../shared/storage-serializers.js',
-  '../shared/platforms.js',
+  '../core/config.js',
+  '../core/messages.js',
+  '../core/storage-serializers.js',
+  '../core/platforms.js',
   './log.js',
-  './state.js',
-  './storage.js',
-  './hydration.js',
-  './sync-modes.js',
+  './state/background-state.js',
+  './persistence/storage.js',
+  './state/hydration.js',
+  './sync/modes.js',
   './tabs.js',
-  './pairing.js',
-  './playback-sync.js',
-  './tab-lifecycle.js',
-  './message-handler.js'
+  './state/pair-lookups.js',
+  './pairing/pairs.js',
+  './sync/playback.js',
+  './pairing/lifecycle.js',
+  './messaging/handler.js'
 );
 
 registerBackgroundMessageHandler();
 registerTabLifecycleListeners();
 
 chrome.runtime.onStartup.addListener(function () {
-  togglePlayHydrationPromise = null;
-  ensureHydrated();
-});
-
-chrome.runtime.onInstalled.addListener(function () {
+  togglePlayBackgroundState.hydrated = false;
   togglePlayHydrationPromise = null;
   ensureHydrated();
 });

@@ -786,6 +786,12 @@ input:focus-visible + .slider {
   color: var(--text-tertiary);
 }
 
+.footer-links {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
 .privacy-link {
   color: var(--text-tertiary);
   font-size: 10px;

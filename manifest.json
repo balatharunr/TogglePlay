@@ -28,12 +28,12 @@
         "https://youtube.com/*"
       ],
       "js": [
-        "src/shared/config.js",
-        "src/shared/messages.js",
-        "src/content/shared/context.js",
-        "src/content/shared/messaging.js",
-        "src/content/shared/keyboard.js",
-        "src/content/youtube/index.js"
+        "src/core/config.js",
+        "src/core/messages.js",
+        "src/content/lib/context.js",
+        "src/content/lib/messaging.js",
+        "src/content/lib/keyboard.js",
+        "src/content/platforms/youtube/index.js"
       ],
       "run_at": "document_idle"
     },
@@ -42,12 +42,12 @@
         "https://music.youtube.com/*"
       ],
       "js": [
-        "src/shared/config.js",
-        "src/shared/messages.js",
-        "src/content/shared/context.js",
-        "src/content/shared/messaging.js",
-        "src/content/shared/keyboard.js",
-        "src/content/ytmusic/index.js"
+        "src/core/config.js",
+        "src/core/messages.js",
+        "src/content/lib/context.js",
+        "src/content/lib/messaging.js",
+        "src/content/lib/keyboard.js",
+        "src/content/platforms/ytmusic/index.js"
       ],
       "run_at": "document_idle"
     },
@@ -56,12 +56,12 @@
         "https://open.spotify.com/*"
       ],
       "js": [
-        "src/shared/config.js",
-        "src/shared/messages.js",
-        "src/content/shared/context.js",
-        "src/content/shared/messaging.js",
-        "src/content/shared/keyboard.js",
-        "src/content/spotify/index.js"
+        "src/core/config.js",
+        "src/core/messages.js",
+        "src/content/lib/context.js",
+        "src/content/lib/messaging.js",
+        "src/content/lib/keyboard.js",
+        "src/content/platforms/spotify/index.js"
       ],
       "run_at": "document_idle"
     }
@@ -74,7 +74,7 @@
   },
 
   "action": {
-    "default_popup": "src/popup/popup.html",
+    "default_popup": "src/ui/popup/popup.html",
     "default_title": "TogglePlay",
     "default_icon": {
       "16": "assets/icon.png",

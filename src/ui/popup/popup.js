@@ -521,6 +521,32 @@ function setupEventListeners() {
             }
         });
     });
+
+    const downloadLogsLink = document.getElementById('downloadLogsLink');
+    if (downloadLogsLink) {
+        downloadLogsLink.addEventListener('click', async (e) => {
+            e.preventDefault();
+            try {
+                const response = await sendMessage({ type: TogglePlayMessages.GET_LOGS });
+                if (response && response.success && response.logs) {
+                    const blob = new Blob([response.logs.join('\n')], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'toggleplay-logs.txt';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    showNotification('Logs downloaded', 'success');
+                } else {
+                    showNotification('Failed to get logs', 'error');
+                }
+            } catch (err) {
+                showNotification('Error downloading logs', 'error');
+            }
+        });
+    }
     
     // Available tabs click handler (event delegation)
     elements.availableTabs.addEventListener('click', (e) => {
