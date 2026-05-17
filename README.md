@@ -49,7 +49,6 @@ A browser extension that automatically toggles play/pause between YouTube, YouTu
 ```
 TogglePlay/
 ├── manifest.json              # Extension entry (paths point into src/)
-├── privacy-policy.html
 ├── assets/
 │   └── icon.png
 ├── src/
@@ -60,7 +59,8 @@ TogglePlay/
 │   │   ├── youtube/
 │   │   ├── ytmusic/
 │   │   └── spotify/
-│   └── popup/                 # Popup UI
+│   ├── popup/                 # Popup UI
+│   └── privacy/               # Privacy Policy page
 ├── scripts/
 │   └── package.sh             # Build store/sideload .zip
 ├── docs/

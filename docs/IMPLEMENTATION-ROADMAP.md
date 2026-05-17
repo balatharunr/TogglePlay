@@ -75,6 +75,10 @@ TogglePlay/
 │   │   ├── popup.html
 │   │   ├── popup.css
 │   │   └── popup.js
+│   ├── privacy/
+│   │   ├── privacy.html
+│   │   ├── privacy.css
+│   │   └── privacy.js
 │   └── options/                           # NEW
 │       ├── options.html
 │       ├── options.css
@@ -446,7 +450,7 @@ TogglePlay/
 
 - [ ] **Step 12.2:** Rewrite README: Exclusive default, chrome.commands, storage behavior
 - [ ] **Step 12.3:** Update `docs/METHODS-AUDIT.md` post-ship (or add “v2 addendum” section)
-- [ ] **Step 12.4:** Update `privacy-policy.html` if new permissions (`storage`, `webNavigation`)
+- [ ] **Step 12.4:** Update `src/privacy/privacy.html` if new permissions (`storage`, `webNavigation`)
 
 ### 12.3 Release
 

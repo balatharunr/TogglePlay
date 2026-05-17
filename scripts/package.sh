@@ -10,10 +10,10 @@ OUT="dist/toggleplay-v${VERSION}.zip"
 
 required=(
   manifest.json
-  privacy-policy.html
   assets/icon.png
   src/background/service-worker.js
   src/popup/popup.html
+  src/privacy/privacy.html
 )
 
 for path in "${required[@]}"; do
@@ -28,7 +28,6 @@ rm -f "$OUT"
 
 zip -r "$OUT" \
   manifest.json \
-  privacy-policy.html \
   assets \
   src \
   -x "**/.DS_Store" \
