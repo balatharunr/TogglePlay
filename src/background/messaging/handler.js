@@ -52,7 +52,7 @@ function registerBackgroundMessageHandler() {
               'source:',
               message.source
             );
-            return await handlePlaybackStateChange(sender.tab.id, message.isPlaying);
+            return await handlePlaybackStateChange(sender.tab.id, message.isPlaying, message.commandId);
           }
 
           case TogglePlayMessages.GET_TABS: {

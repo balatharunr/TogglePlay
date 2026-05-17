@@ -6,16 +6,7 @@ function registerTabLifecycleListeners() {
     removePairsInvolvingTab(tabId);
   });
 
-  chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
-    // Only react to url changes (which happen when navigation starts).
-    if (!changeInfo.url) {
-      return;
-    }
-    // If the new URL is not on a supported platform, remove the pair.
-    if (TogglePlayPlatforms.getSourceType(changeInfo.url) === null) {
-      removePairsInvolvingTab(tabId);
-    }
-  });
+
 }
 
 async function removePairsInvolvingTab(tabId) {

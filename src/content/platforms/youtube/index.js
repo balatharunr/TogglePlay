@@ -31,7 +31,7 @@
   });
 
   function findVideoElement() {
-    var video = document.querySelector('video');
+    var video = document.querySelector('video.html5-main-video') || document.querySelector('video');
     return video && video.readyState >= 1 && video.duration > 0 ? video : null;
   }
 
@@ -62,10 +62,15 @@
 
       state.isPlaying = newState;
       logger.log('Notifying state change:', newState ? 'PLAYING' : 'PAUSED');
-      var response = await sendMessage({
+      var payload = {
         type: TogglePlayMessages.PLAYBACK_STATE_CHANGED,
         isPlaying: newState
-      });
+      };
+      if (state.lastCommandId) {
+        payload.commandId = state.lastCommandId;
+        state.lastCommandId = null; // Clear after sending
+      }
+      var response = await sendMessage(payload);
       if (!response) {
         logger.error('Background did not respond (reload extension or re-pair tabs)');
         return;
@@ -126,6 +131,7 @@
       try {
         switch (message.type) {
           case TogglePlayMessages.CONTROL_PLAYBACK:
+            if (message.commandId) state.lastCommandId = message.commandId;
             await controlPlayback(message.action);
             return { success: true };
           case TogglePlayMessages.GET_PLAYBACK_STATE: {

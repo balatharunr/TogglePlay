@@ -16,7 +16,8 @@ importScripts(
   './pairing/pairs.js',
   './sync/playback.js',
   './pairing/lifecycle.js',
-  './messaging/handler.js'
+  './messaging/handler.js',
+  './injection.js'
 );
 
 registerBackgroundMessageHandler();

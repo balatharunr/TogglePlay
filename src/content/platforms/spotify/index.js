@@ -191,6 +191,7 @@
     try {
       switch (message.type) {
         case TogglePlayMessages.CONTROL_PLAYBACK: {
+          if (message.commandId) state.lastCommandId = message.commandId;
           var result = controlPlayback(message.action);
           sendResponse(result || { success: true });
           break;

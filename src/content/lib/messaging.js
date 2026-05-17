@@ -81,10 +81,15 @@ var TogglePlayContentMessaging = (function () {
         }
 
         state.isPlaying = newState;
-        await sendMessage({
+        var payload = {
           type: TogglePlayMessages.PLAYBACK_STATE_CHANGED,
           isPlaying: newState
-        });
+        };
+        if (state.lastCommandId) {
+          payload.commandId = state.lastCommandId;
+          state.lastCommandId = null;
+        }
+        await sendMessage(payload);
       }, debounceMs);
     };
   }

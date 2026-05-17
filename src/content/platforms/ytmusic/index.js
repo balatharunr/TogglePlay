@@ -34,7 +34,7 @@
   );
 
   function findVideoElement() {
-    var video = document.querySelector('video');
+    var video = document.querySelector('video.html5-main-video') || document.querySelector('video');
     return video && video.readyState >= 1 && video.duration > 0 ? video : null;
   }
 
@@ -154,6 +154,7 @@
 
     switch (message.type) {
       case TogglePlayMessages.CONTROL_PLAYBACK:
+        if (message.commandId) state.lastCommandId = message.commandId;
         controlPlayback(message.action);
         sendResponse({ success: true });
         break;

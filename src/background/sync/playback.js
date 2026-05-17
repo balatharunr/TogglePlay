@@ -1,4 +1,4 @@
-async function handlePlaybackStateChange(tabId, isPlaying) {
+async function handlePlaybackStateChange(tabId, isPlaying, commandId) {
   var state = togglePlayBackgroundState;
   tabId = TogglePlayStorageSerializers.normalizeTabId(tabId);
 
@@ -7,8 +7,15 @@ async function handlePlaybackStateChange(tabId, isPlaying) {
     return { success: true, skipped: 'disabled' };
   }
 
+  if (commandId && state.pendingCommands && state.pendingCommands.has(commandId)) {
+    togglePlayLog('Ignoring state change from controlled tab ' + tabId + ' (command ' + commandId + ')');
+    state.pendingCommands.delete(commandId);
+    return { success: true, skipped: 'echo' };
+  }
+
+  // Fallback for older content scripts
   if (state.controlledTabs.has(tabId)) {
-    togglePlayLog('Ignoring state change from controlled tab ' + tabId);
+    togglePlayLog('Ignoring state change from controlled tab ' + tabId + ' (legacy timeout)');
     state.controlledTabs.delete(tabId);
     return { success: true, skipped: 'echo' };
   }
@@ -30,11 +37,21 @@ async function handlePlaybackStateChange(tabId, isPlaying) {
   var pairedTabId = TogglePlayStorageSerializers.normalizeTabId(pairInfo.pairedWith[0].tabId);
   var controlAction = action === TogglePlaySyncModes.ACTIONS.PLAY_PARTNER ? 'PLAY' : 'PAUSE';
 
+  var newCommandId = 'cmd_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+  if (!state.pendingCommands) state.pendingCommands = new Map();
+  state.pendingCommands.set(newCommandId, Date.now());
+  
+  // Cleanup old commands
+  for (var [id, time] of state.pendingCommands.entries()) {
+    if (Date.now() - time > 5000) state.pendingCommands.delete(id);
+  }
+
   try {
     state.controlledTabs.add(pairedTabId);
     var response = await sendMessageToTab(pairedTabId, {
       type: TogglePlayMessages.CONTROL_PLAYBACK,
-      action: controlAction
+      action: controlAction,
+      commandId: newCommandId
     });
 
     if (!response) {
@@ -59,7 +76,7 @@ async function handlePlaybackStateChange(tabId, isPlaying) {
 
     setTimeout(function () {
       state.controlledTabs.delete(pairedTabId);
-    }, TogglePlayConfig.CONTROLLED_TAB_TIMEOUT_MS);
+    }, TogglePlayConfig.CONTROLLED_TAB_TIMEOUT_MS || 1000);
 
     return {
       success: true,
