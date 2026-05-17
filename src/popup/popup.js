@@ -20,6 +20,7 @@ let state = {
     availableTabs: [],
     activePairs: [],
     isEnabled: true,
+    syncMode: 'exclusive',
     isLoading: false
 };
 
@@ -124,7 +125,7 @@ async function getCurrentTab() {
 async function loadAvailableTabs() {
     try {
         log('Loading available tabs...');
-        const response = await sendMessage({ type: 'GET_TABS' });
+        const response = await sendMessage({ type: TogglePlayMessages.GET_TABS });
         state.availableTabs = response.tabs || [];
         
         // Get current tab
@@ -165,9 +166,11 @@ async function loadAvailableTabs() {
 async function loadActivePairs() {
     try {
         log('Loading active pairs...');
-        const response = await sendMessage({ type: 'GET_PAIRS' });
+        const response = await sendMessage({ type: TogglePlayMessages.GET_PAIRS });
         state.activePairs = response.pairs || [];
         state.isEnabled = response.isEnabled !== false;
+        state.syncMode = response.syncMode || 'exclusive';
+        updateSyncModeUI();
         
         log('Loaded pairs:', state.activePairs.length, 'isEnabled:', state.isEnabled);
         
@@ -277,12 +280,16 @@ function renderAvailableTabs() {
         }
         
         const isSelected = tab.id === state.selectedTabId;
+        const spotifyWarning = tab.sourceType === 'spotify' && tab.webPlayerActive === false
+            ? '<div class="spotify-device-warning">Web player not active — playback is on another device</div>'
+            : '';
         
         return `
             <div class="available-tab-item ${isSelected ? 'selected' : ''}" data-tab-id="${tab.id}">
                 <div class="available-tab-info">
                     <span class="available-tab-title">${icon} ${escapeHtml(title)}</span>
                     <span class="available-tab-url">${escapeHtml(displayUrl)}</span>
+                    ${spotifyWarning}
                 </div>
                 <button class="select-button" data-tab-id="${tab.id}">
                     ${isSelected ? 'Selected' : 'Select'}
@@ -371,7 +378,7 @@ async function handleTabSelection(tabId) {
         
         // Send ADD_PAIR which will automatically clear existing pairs and create new one
         const response = await sendMessage({
-            type: 'ADD_PAIR',
+            type: TogglePlayMessages.ADD_PAIR,
             tabId1: state.currentTabId,
             tabId2: tabId
         });
@@ -379,7 +386,7 @@ async function handleTabSelection(tabId) {
         if (response && response.success !== false) {
             // Auto-enable silently if not enabled
             if (!state.isEnabled) {
-                await sendMessage({ type: 'SET_ENABLED', enabled: true });
+                await sendMessage({ type: TogglePlayMessages.SET_ENABLED, enabled: true });
                 state.isEnabled = true;
                 elements.enableToggle.checked = true;
             }
@@ -402,7 +409,7 @@ async function removeAllPairs() {
         log('Removing all pairs');
         
         const response = await sendMessage({
-            type: 'CLEAR_ALL_PAIRS'
+            type: TogglePlayMessages.CLEAR_ALL_PAIRS
         });
         
         if (response && response.success !== false) {
@@ -426,7 +433,7 @@ async function handlePairRemoval(tab1Id, tab2Id) {
         log('Removing pair:', tab1Id, tab2Id);
         
         const response = await sendMessage({
-            type: 'REMOVE_PAIR',
+            type: TogglePlayMessages.REMOVE_PAIR,
             tabId1: parseInt(tab1Id),
             tabId2: parseInt(tab2Id)
         });
@@ -444,6 +451,34 @@ async function handlePairRemoval(tab1Id, tab2Id) {
 }
 
 /**
+ * Sync mode UI
+ */
+function updateSyncModeUI() {
+    const radios = document.querySelectorAll('input[name="syncMode"]');
+    radios.forEach(function (radio) {
+        radio.checked = radio.value === state.syncMode;
+    });
+}
+
+async function handleSyncModeChange(mode) {
+    try {
+        const response = await sendMessage({
+            type: TogglePlayMessages.SET_SYNC_MODE,
+            mode: mode
+        });
+
+        if (response && response.success !== false) {
+            state.syncMode = mode;
+        } else {
+            updateSyncModeUI();
+        }
+    } catch (err) {
+        error('Failed to set sync mode:', err);
+        updateSyncModeUI();
+    }
+}
+
+/**
  * Handle enable/disable toggle
  */
 async function handleToggleEnable(enabled) {
@@ -451,7 +486,7 @@ async function handleToggleEnable(enabled) {
         log('Toggling enable state to:', enabled);
         
         const response = await sendMessage({
-            type: 'SET_ENABLED',
+            type: TogglePlayMessages.SET_ENABLED,
             enabled: enabled
         });
         
@@ -477,6 +512,14 @@ function setupEventListeners() {
     // Enable/disable toggle
     elements.enableToggle.addEventListener('change', (e) => {
         handleToggleEnable(e.target.checked);
+    });
+
+    document.querySelectorAll('input[name="syncMode"]').forEach(function (radio) {
+        radio.addEventListener('change', function (e) {
+            if (e.target.checked) {
+                handleSyncModeChange(e.target.value);
+            }
+        });
     });
     
     // Available tabs click handler (event delegation)

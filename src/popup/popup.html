@@ -68,6 +68,27 @@
         </div>
       </div>
 
+      <!-- Sync mode -->
+      <div class="sync-mode-container">
+        <div class="section-label">Sync mode</div>
+        <div class="sync-mode-options" role="radiogroup" aria-label="Sync mode">
+          <label class="sync-mode-option">
+            <input type="radio" name="syncMode" value="exclusive" checked>
+            <span class="sync-mode-label">
+              <strong>Exclusive</strong>
+              <span class="sync-mode-hint">Play one → pause the other. Pause does not start the partner.</span>
+            </span>
+          </label>
+          <label class="sync-mode-option">
+            <input type="radio" name="syncMode" value="mirror">
+            <span class="sync-mode-label">
+              <strong>Mirror</strong>
+              <span class="sync-mode-hint">Classic toggle: pause one → play the other.</span>
+            </span>
+          </label>
+        </div>
+      </div>
+
       <!-- Active Pairs -->
       <div class="pairs-container">
         <div class="section-label" style="margin-bottom: 8px;">
@@ -90,6 +111,8 @@
     </div>
   </div>
 
+  <script src="../shared/config.js"></script>
+  <script src="../shared/messages.js"></script>
   <script src="../shared/platforms.js"></script>
   <script src="popup.js"></script>
 </body>

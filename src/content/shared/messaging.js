@@ -11,7 +11,9 @@ var TogglePlayContentMessaging = (function () {
     }
 
     try {
-      var response = await chrome.runtime.sendMessage({ type: 'GET_TAB_ID' });
+      var response = await chrome.runtime.sendMessage({
+        type: TogglePlayMessages.GET_TAB_ID
+      });
       if (response && response.tabId) {
         state.tabId = response.tabId;
         state.connected = true;
@@ -80,7 +82,7 @@ var TogglePlayContentMessaging = (function () {
 
         state.isPlaying = newState;
         await sendMessage({
-          type: 'PLAYBACK_STATE_CHANGED',
+          type: TogglePlayMessages.PLAYBACK_STATE_CHANGED,
           isPlaying: newState
         });
       }, debounceMs);

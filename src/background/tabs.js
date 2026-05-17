@@ -24,7 +24,7 @@ async function getYouTubeTabs() {
       url: ['https://www.youtube.com/*', 'https://youtube.com/*']
     });
     var videoTabs = tabs.filter(function (tab) {
-      return tab.url && tab.url.includes('/watch?');
+      return TogglePlayPlatforms.isYouTubeUrl(tab.url);
     });
     togglePlayLog('Found YouTube tabs:', videoTabs.length);
     return videoTabs;

@@ -1,5 +1,5 @@
 /**
- * Spotify web player content script.
+ * Spotify web player content script (DOM button control; web player must be active device).
  */
 (function () {
   'use strict';
@@ -51,7 +51,53 @@
     return null;
   }
 
+  function isWebPlayerActive() {
+    var connectSelectors = [
+      '[data-testid="connect-device"]',
+      '[data-testid="web-player-connect-device"]',
+      'button[aria-label*="Connect to a device"]',
+      'button[aria-label*="Listen on another device"]'
+    ];
+
+    for (var i = 0; i < connectSelectors.length; i++) {
+      if (document.querySelector(connectSelectors[i])) {
+        return false;
+      }
+    }
+
+    var button = findPlayPauseButton();
+    if (!button) {
+      return true;
+    }
+
+    var label = (button.getAttribute('aria-label') || '').toLowerCase();
+    if (label.indexOf('play on ') === 0) {
+      return false;
+    }
+
+    var devicePicker = document.querySelector('[data-testid="device-picker-button"]');
+    if (devicePicker) {
+      var pickerLabel = (devicePicker.getAttribute('aria-label') || '').toLowerCase();
+      if (pickerLabel.indexOf('listening on') !== -1 &&
+          pickerLabel.indexOf('web') === -1 &&
+          pickerLabel.indexOf('browser') === -1 &&
+          pickerLabel.indexOf('this computer') === -1) {
+        return false;
+      }
+    }
+
+    if (button.disabled || button.getAttribute('aria-disabled') === 'true') {
+      return false;
+    }
+
+    return true;
+  }
+
   function getPlaybackState() {
+    if (!isWebPlayerActive()) {
+      return false;
+    }
+
     var button = findPlayPauseButton();
     if (!button) return false;
 
@@ -71,10 +117,15 @@
   function controlPlayback(action) {
     logger.log('Control request:', action);
 
+    if (!isWebPlayerActive()) {
+      logger.log('Spotify web player is not the active device');
+      return { success: false, reason: 'DEVICE_NOT_WEB' };
+    }
+
     var button = findPlayPauseButton();
     if (!button) {
       logger.log('ERROR: No play/pause button found - is Spotify player loaded?');
-      return;
+      return { success: false, reason: 'NO_PLAYER' };
     }
 
     var isCurrentlyPlaying = getPlaybackState();
@@ -84,6 +135,8 @@
     } else if (action === 'PAUSE' && isCurrentlyPlaying) {
       button.click();
     }
+
+    return { success: true };
   }
 
   function setupPlayStateObserver() {
@@ -137,18 +190,20 @@
   chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
     try {
       switch (message.type) {
-        case 'CONTROL_PLAYBACK':
-          controlPlayback(message.action);
-          sendResponse({ success: true });
+        case TogglePlayMessages.CONTROL_PLAYBACK: {
+          var result = controlPlayback(message.action);
+          sendResponse(result || { success: true });
           break;
-        case 'GET_PLAYBACK_STATE':
+        }
+        case TogglePlayMessages.GET_PLAYBACK_STATE:
           sendResponse({
             success: true,
             isPlaying: getPlaybackState(),
-            hasPlayer: !!findPlayPauseButton()
+            hasPlayer: !!findPlayPauseButton(),
+            webPlayerActive: isWebPlayerActive()
           });
           break;
-        case 'PING':
+        case TogglePlayMessages.PING:
           sendResponse({ success: true });
           break;
         default:

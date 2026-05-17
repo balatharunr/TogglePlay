@@ -35,7 +35,7 @@ function setupPauseBothShortcut(state, sendMessage, logger, options) {
     }
 
     try {
-      var response = await sendMessage({ type: 'PAUSE_BOTH' });
+      var response = await sendMessage({ type: TogglePlayMessages.PAUSE_BOTH });
       if (response && response.success) {
         logger.log('Both tabs paused successfully');
       } else if (response) {

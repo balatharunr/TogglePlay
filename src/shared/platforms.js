@@ -1,5 +1,12 @@
 /**
  * Platform detection and display helpers (YouTube, YouTube Music, Spotify).
+ *
+ * Supported YouTube media URL patterns (for tab discovery / pairing):
+ *   - https://www.youtube.com/watch?v=...
+ *   - https://youtube.com/watch?v=...
+ *   - https://www.youtube.com/shorts/...
+ *   - https://www.youtube.com/embed/...
+ *   - https://youtu.be/...
  */
 var TogglePlayPlatforms = (function () {
   'use strict';
@@ -28,6 +35,11 @@ var TogglePlayPlatforms = (function () {
     return isYouTubeUrl(url) || isYTMusicUrl(url) || isSpotifyUrl(url);
   }
 
+  /** Alias for background tab listing (same rules as isYouTubeUrl). */
+  function isYouTubeMediaTab(url) {
+    return isYouTubeUrl(url);
+  }
+
   /** Loose URL → platform label (pairing, tab metadata). */
   function getSourceType(url) {
     if (!url) return null;
@@ -47,6 +59,7 @@ var TogglePlayPlatforms = (function () {
 
   return {
     isYouTubeUrl,
+    isYouTubeMediaTab,
     isYTMusicUrl,
     isSpotifyUrl,
     isMediaUrl,

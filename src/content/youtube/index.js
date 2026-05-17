@@ -59,7 +59,7 @@
       state.isPlaying = newState;
       logger.log('Notifying state change:', newState ? 'PLAYING' : 'PAUSED');
       await sendMessage({
-        type: 'PLAYBACK_STATE_CHANGED',
+        type: TogglePlayMessages.PLAYBACK_STATE_CHANGED,
         isPlaying: newState
       });
     }, TogglePlayConfig.DEBOUNCE_MS.YOUTUBE);
@@ -107,10 +107,10 @@
     var handleAsync = async function () {
       try {
         switch (message.type) {
-          case 'CONTROL_PLAYBACK':
+          case TogglePlayMessages.CONTROL_PLAYBACK:
             await controlPlayback(message.action);
             return { success: true };
-          case 'GET_PLAYBACK_STATE': {
+          case TogglePlayMessages.GET_PLAYBACK_STATE: {
             var video = findVideoElement();
             return {
               success: true,
@@ -118,7 +118,7 @@
               hasVideo: !!video
             };
           }
-          case 'PING':
+          case TogglePlayMessages.PING:
             return { success: true };
           default:
             return { success: false, error: 'Unknown message type' };

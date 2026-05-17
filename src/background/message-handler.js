@@ -1,25 +1,47 @@
+async function enrichSpotifyTabStatus(tabs) {
+  var enriched = [];
+
+  for (var i = 0; i < tabs.length; i++) {
+    var tab = tabs[i];
+    if (tab.sourceType !== 'spotify') {
+      enriched.push(tab);
+      continue;
+    }
+
+    var webPlayerActive = true;
+    try {
+      var response = await sendMessageToTab(tab.id, {
+        type: TogglePlayMessages.GET_PLAYBACK_STATE
+      });
+      if (response && response.webPlayerActive === false) {
+        webPlayerActive = false;
+      }
+    } catch (err) {
+      webPlayerActive = true;
+    }
+
+    enriched.push(Object.assign({}, tab, { webPlayerActive: webPlayerActive }));
+  }
+
+  return enriched;
+}
+
 function registerBackgroundMessageHandler() {
   chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
-    console.log(
-      '[TogglePlay Background] Received message:',
-      message.type,
-      'from tab:',
-      sender.tab && sender.tab.id,
-      'source:',
-      message.source
-    );
-
     var handleAsync = async function () {
+      await ensureHydrated();
+
       try {
         var state = togglePlayBackgroundState;
+        var type = message.type;
 
-        switch (message.type) {
-          case 'GET_TAB_ID':
+        switch (type) {
+          case TogglePlayMessages.GET_TAB_ID:
             return { tabId: sender.tab && sender.tab.id };
 
-          case 'PLAYBACK_STATE_CHANGED':
-            console.log(
-              '[TogglePlay Background] Handling playback state change:',
+          case TogglePlayMessages.PLAYBACK_STATE_CHANGED:
+            togglePlayLog(
+              'Playback state change:',
               message.isPlaying,
               'from tab:',
               sender.tab && sender.tab.id
@@ -27,54 +49,72 @@ function registerBackgroundMessageHandler() {
             await handlePlaybackStateChange(sender.tab.id, message.isPlaying);
             return { success: true };
 
-          case 'GET_TABS': {
-            var tabs = await getAllMediaTabs();
-            return {
-              success: true,
-              tabs: tabs.map(function (tab) {
-                return {
-                  id: tab.id,
-                  title: tab.title,
-                  url: tab.url,
-                  sourceType: tab.sourceType
-                };
-              })
-            };
+          case TogglePlayMessages.GET_TABS: {
+            var mediaTabs = await getAllMediaTabs();
+            var tabList = mediaTabs.map(function (tab) {
+              return {
+                id: tab.id,
+                title: tab.title,
+                url: tab.url,
+                sourceType: tab.sourceType
+              };
+            });
+            tabList = await enrichSpotifyTabStatus(tabList);
+            return { success: true, tabs: tabList };
           }
 
-          case 'GET_PAIRS': {
+          case TogglePlayMessages.GET_PAIRS: {
             var pairs = Array.from(state.pairs.entries()).map(function (entry) {
               var tabId = entry[0];
               var pairInfo = entry[1];
               return {
                 tabId: tabId,
                 title: pairInfo.title,
+                url: pairInfo.url,
+                sourceType: pairInfo.sourceType,
                 pairedWith: pairInfo.pairedWith
               };
             });
-            return { success: true, pairs: pairs, isEnabled: state.isEnabled };
+            return {
+              success: true,
+              pairs: pairs,
+              isEnabled: state.isEnabled,
+              syncMode: state.syncMode
+            };
           }
 
-          case 'ADD_PAIR':
+          case TogglePlayMessages.ADD_PAIR:
             return await addPair(message.tabId1, message.tabId2);
 
-          case 'REMOVE_PAIR':
+          case TogglePlayMessages.REMOVE_PAIR:
             state.pairs.delete(message.tabId1);
             state.pairs.delete(message.tabId2);
+            await persistBackgroundState({ pairs: true });
             return { success: true };
 
-          case 'CLEAR_ALL_PAIRS':
+          case TogglePlayMessages.CLEAR_ALL_PAIRS:
             state.pairs.clear();
+            await persistBackgroundState({ pairs: true });
             return { success: true };
 
-          case 'SET_ENABLED':
-            state.isEnabled = message.enabled;
+          case TogglePlayMessages.SET_ENABLED:
+            await persistBackgroundState({ isEnabled: message.enabled });
             return { success: true };
 
-          case 'PAUSE_BOTH':
+          case TogglePlayMessages.SET_SYNC_MODE: {
+            var mode = message.mode;
+            if (mode !== TogglePlayConfig.SYNC_MODES.EXCLUSIVE &&
+                mode !== TogglePlayConfig.SYNC_MODES.MIRROR) {
+              return { success: false, error: 'Invalid sync mode' };
+            }
+            await persistBackgroundState({ syncMode: mode });
+            return { success: true, syncMode: mode };
+          }
+
+          case TogglePlayMessages.PAUSE_BOTH:
             return await handlePauseBoth(sender.tab && sender.tab.id);
 
-          case 'PING':
+          case TogglePlayMessages.PING:
             return { success: true, pong: true };
 
           default:

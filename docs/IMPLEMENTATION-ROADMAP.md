@@ -113,28 +113,28 @@ TogglePlay/
 
 ### 1.1 Single source of truth for YouTube URLs
 
-- [ ] **Step 1.1:** Add `isYouTubeMediaTab(url)` to `src/shared/platforms.js` (watch, shorts, embed, youtu.be)
-- [ ] **Step 1.2:** Replace inline filter in `src/background/tabs.js` `getYouTubeTabs()` — use `TogglePlayPlatforms.isYouTubeUrl()` (same rules as popup)
-- [ ] **Step 1.3:** Add unit-style comment block in `platforms.js` listing supported path patterns for future testers
+- [x] **Step 1.1:** Add `isYouTubeMediaTab(url)` to `src/shared/platforms.js` (watch, shorts, embed, youtu.be)
+- [x] **Step 1.2:** Replace inline filter in `src/background/tabs.js` `getYouTubeTabs()` — use `TogglePlayPlatforms.isYouTubeUrl()` (same rules as popup)
+- [x] **Step 1.3:** Add unit-style comment block in `platforms.js` listing supported path patterns for future testers
 
 ### 1.2 Unified message protocol
 
-- [ ] **Step 1.4:** Create `src/shared/messages.js` with constants:
+- [x] **Step 1.4:** Create `src/shared/messages.js` with constants:
   - `GET_TAB_ID`, `PLAYBACK_STATE_CHANGED`, `CONTROL_PLAYBACK`, `GET_PLAYBACK_STATE`, `PAUSE_BOTH`, `PING`
   - Payload: `{ type, tabId?, isPlaying?, action?, commandId?, source? }`
-- [ ] **Step 1.5:** Rename YT Music `GET_STATE` → `GET_PLAYBACK_STATE` in `src/content/ytmusic/index.js`
-- [ ] **Step 1.6:** Update `message-handler.js` + all content scripts to use shared constants
+- [x] **Step 1.5:** Rename YT Music `GET_STATE` → `GET_PLAYBACK_STATE` in `src/content/ytmusic/index.js`
+- [x] **Step 1.6:** Update `message-handler.js` + all content scripts to use shared constants
 
 ### 1.3 YT Music parity
 
-- [ ] **Step 1.7:** Add `src/content/shared/keyboard.js` to YT Music manifest entry (match YouTube/Spotify)
-- [ ] **Step 1.8:** Wire `setupPauseBothShortcut` in `src/content/ytmusic/index.js` with `onLocalPause` → video pause or button click
+- [x] **Step 1.7:** Add `src/content/shared/keyboard.js` to YT Music manifest entry (match YouTube/Spotify)
+- [x] **Step 1.8:** Wire `setupPauseBothShortcut` in `src/content/ytmusic/index.js` with `onLocalPause` → video pause or button click
 
 ### 1.4 Spotify hygiene
 
-- [ ] **Step 1.9:** Fix `src/content/spotify/index.js` header comment (remove “spacebar” claim)
-- [ ] **Step 1.10:** Call `isWebPlayerActive()` before `controlPlayback`; return `{ success: false, reason: 'DEVICE_NOT_WEB' }` when inactive
-- [ ] **Step 1.11:** Surface device warning in popup when Spotify tab reports non-web player (banner on tab row)
+- [x] **Step 1.9:** Fix `src/content/spotify/index.js` header comment (remove “spacebar” claim)
+- [x] **Step 1.10:** Call `isWebPlayerActive()` before `controlPlayback`; return `{ success: false, reason: 'DEVICE_NOT_WEB' }` when inactive
+- [x] **Step 1.11:** Surface device warning in popup when Spotify tab reports non-web player (banner on tab row)
 
 **Acceptance:**
 - Shorts tab appears in GET_TABS and can be paired
@@ -152,34 +152,34 @@ TogglePlay/
 
 ### 2.1 Manifest & permissions
 
-- [ ] **Step 2.1:** Add `"storage"` to `manifest.json` `permissions`
-- [ ] **Step 2.2:** Bump version to `2.0.0-beta.1` when storage lands
+- [x] **Step 2.1:** Add `"storage"` to `manifest.json` `permissions`
+- [x] **Step 2.2:** Bump version to `2.0.0-beta.1` when storage lands
 
 ### 2.2 Storage layer
 
-- [ ] **Step 2.3:** Create `src/shared/storage-serializers.js`
+- [x] **Step 2.3:** Create `src/shared/storage-serializers.js`
   - `setToArray(set)` / `arrayToSet(arr)`
   - `mapToObject(map)` / `objectToMap(obj)` for pairs if needed
-- [ ] **Step 2.4:** Create `src/background/storage.js`
+- [x] **Step 2.4:** Create `src/background/storage.js`
   - **local:** `enabled`, `syncMode` (`exclusive` | `mirror`), `debounceMs` overrides, `commandShortcuts` metadata
   - **session:** `pairs` (tabId pairs + titles + urls + sourceTypes), `lastCommandIds`
-- [ ] **Step 2.5:** Extend `TogglePlayConfig.STORAGE_KEYS` in `config.js` with `SYNC_MODE`, `PAIRS_SESSION`, etc.
+- [x] **Step 2.5:** Extend `TogglePlayConfig.STORAGE_KEYS` in `config.js` with `SYNC_MODE`, `PAIRS_SESSION`, etc.
 
 ### 2.3 Hydration
 
-- [ ] **Step 2.6:** Create `src/background/hydration.js`
+- [x] **Step 2.6:** Create `src/background/hydration.js`
   - `hydrateState()` on `runtime.onStartup`, `runtime.onInstalled`, first `onMessage`
   - Load local + session → populate `togglePlayBackgroundState`
   - `pruneInvalidPairs()`: `chrome.tabs.get` each id; remove missing
-- [ ] **Step 2.7:** Call `hydrateState()` at top of `service-worker.js` before handling messages
-- [ ] **Step 2.8:** On `ADD_PAIR` / `REMOVE_PAIR` / `CLEAR_ALL_PAIRS` / `SET_ENABLED` — persist after memory update
+- [x] **Step 2.7:** Call `hydrateState()` at top of `service-worker.js` before handling messages
+- [x] **Step 2.8:** On `ADD_PAIR` / `REMOVE_PAIR` / `CLEAR_ALL_PAIRS` / `SET_ENABLED` — persist after memory update
 
 ### 2.4 Tab lifecycle
 
-- [ ] **Step 2.9:** Create `src/background/tab-lifecycle.js`
+- [x] **Step 2.9:** Create `src/background/tab-lifecycle.js`
   - `chrome.tabs.onRemoved` → remove pair entries involving tabId, persist session
   - `chrome.tabs.onUpdated` → if URL leaves media origin, remove pair or mark degraded
-- [ ] **Step 2.10:** Register listeners in `service-worker.js`
+- [x] **Step 2.10:** Register listeners in `service-worker.js`
 
 **Acceptance:**
 - Pair survives: close popup → wait 60s (SW sleep) → play/pause still syncs
@@ -197,16 +197,16 @@ TogglePlay/
 
 ### 3.1 State machine
 
-- [ ] **Step 3.1:** Create `src/background/sync-modes.js`
+- [x] **Step 3.1:** Create `src/background/sync-modes.js`
   - `EXCLUSIVE`: play on A → pause B; pause on A → **no op** on B
   - `MIRROR`: current behavior (pause A → play B)
-- [ ] **Step 3.2:** Default `syncMode` in storage: `exclusive`
-- [ ] **Step 3.3:** Refactor `handlePlaybackStateChange` in `playback-sync.js` to call `SyncModes.resolveAction(mode, isPlaying)`
+- [x] **Step 3.2:** Default `syncMode` in storage: `exclusive`
+- [x] **Step 3.3:** Refactor `handlePlaybackStateChange` in `playback-sync.js` to call `SyncModes.resolveAction(mode, isPlaying)`
 
 ### 3.2 UI
 
-- [ ] **Step 3.4:** Popup: add sync mode selector (Exclusive / Mirror) with short descriptions
-- [ ] **Step 3.5:** `SET_SYNC_MODE` message type; persist to `storage.local`
+- [x] **Step 3.4:** Popup: add sync mode selector (Exclusive / Mirror) with short descriptions
+- [x] **Step 3.5:** `SET_SYNC_MODE` message type; persist to `storage.local`
 - [ ] **Step 3.6:** Options page stub (can be minimal) — duplicate sync mode control (full options in Phase 11)
 
 **Acceptance:**

@@ -18,26 +18,23 @@ async function handlePlaybackStateChange(tabId, isPlaying) {
     return;
   }
 
-  togglePlayLog('Tab ' + tabId + ' is now:', isPlaying ? 'PLAYING' : 'PAUSED');
+  var action = TogglePlaySyncModes.resolveAction(state.syncMode, isPlaying);
+  if (action === TogglePlaySyncModes.ACTIONS.NONE) {
+    togglePlayLog('Exclusive mode: pause on tab ' + tabId + ' — no partner action');
+    return;
+  }
+
+  togglePlayLog('Tab ' + tabId + ' is now:', isPlaying ? 'PLAYING' : 'PAUSED', '→', action);
 
   var pairedTabId = pairInfo.pairedWith[0].tabId;
+  var controlAction = action === TogglePlaySyncModes.ACTIONS.PLAY_PARTNER ? 'PLAY' : 'PAUSE';
 
   try {
-    if (isPlaying) {
-      togglePlayLog('Pausing paired tab ' + pairedTabId);
-      state.controlledTabs.add(pairedTabId);
-      await sendMessageToTab(pairedTabId, {
-        type: 'CONTROL_PLAYBACK',
-        action: 'PAUSE'
-      });
-    } else {
-      togglePlayLog('Playing paired tab ' + pairedTabId);
-      state.controlledTabs.add(pairedTabId);
-      await sendMessageToTab(pairedTabId, {
-        type: 'CONTROL_PLAYBACK',
-        action: 'PLAY'
-      });
-    }
+    state.controlledTabs.add(pairedTabId);
+    await sendMessageToTab(pairedTabId, {
+      type: TogglePlayMessages.CONTROL_PLAYBACK,
+      action: controlAction
+    });
 
     setTimeout(function () {
       state.controlledTabs.delete(pairedTabId);
@@ -63,7 +60,10 @@ async function handlePauseBoth(senderTabId) {
   state.controlledTabs.add(senderTabId);
   state.controlledTabs.add(pairedTabId);
 
-  await sendMessageToTab(pairedTabId, { type: 'CONTROL_PLAYBACK', action: 'PAUSE' });
+  await sendMessageToTab(pairedTabId, {
+    type: TogglePlayMessages.CONTROL_PLAYBACK,
+    action: 'PAUSE'
+  });
 
   setTimeout(function () {
     state.isEnabled = wasEnabled;

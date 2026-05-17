@@ -29,6 +29,7 @@ async function addPair(tabId1, tabId2) {
     });
 
     togglePlayLog('Pair added successfully:', sourceType1, '↔', sourceType2);
+    await persistBackgroundState({ pairs: true });
     return { success: true };
   } catch (err) {
     togglePlayError('Failed to add pair:', err);

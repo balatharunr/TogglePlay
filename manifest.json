@@ -1,11 +1,13 @@
 {
   "manifest_version": 3,
   "name": "TogglePlay",
-  "version": "1.2.1",
+  "version": "2.0.0",
+  "version_name": "2.0.0-beta.1",
   "description": "Automatically toggles play/pause between YouTube, YouTube Music, and Spotify tabs for seamless media experience",
 
   "permissions": [
-    "tabs"
+    "tabs",
+    "storage"
   ],
 
   "host_permissions": [
@@ -27,6 +29,7 @@
       ],
       "js": [
         "src/shared/config.js",
+        "src/shared/messages.js",
         "src/content/shared/context.js",
         "src/content/shared/messaging.js",
         "src/content/shared/keyboard.js",
@@ -40,8 +43,10 @@
       ],
       "js": [
         "src/shared/config.js",
+        "src/shared/messages.js",
         "src/content/shared/context.js",
         "src/content/shared/messaging.js",
+        "src/content/shared/keyboard.js",
         "src/content/ytmusic/index.js"
       ],
       "run_at": "document_idle"
@@ -52,6 +57,7 @@
       ],
       "js": [
         "src/shared/config.js",
+        "src/shared/messages.js",
         "src/content/shared/context.js",
         "src/content/shared/messaging.js",
         "src/content/shared/keyboard.js",

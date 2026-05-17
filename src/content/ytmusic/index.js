@@ -153,11 +153,11 @@
     }
 
     switch (message.type) {
-      case 'CONTROL_PLAYBACK':
+      case TogglePlayMessages.CONTROL_PLAYBACK:
         controlPlayback(message.action);
         sendResponse({ success: true });
         break;
-      case 'GET_STATE': {
+      case TogglePlayMessages.GET_PLAYBACK_STATE: {
         var v = findVideoElement();
         sendResponse({
           success: true,
@@ -166,7 +166,7 @@
         });
         break;
       }
-      case 'PING':
+      case TogglePlayMessages.PING:
         sendResponse({ success: true, pong: true, source: 'ytmusic' });
         break;
       default:
@@ -183,6 +183,18 @@
       logger.error('Failed to initialize tab ID');
       return;
     }
+
+    setupPauseBothShortcut(state, sendMessage, logger, {
+      blockedTags: ['INPUT', 'TEXTAREA', 'SEARCH'],
+      onLocalPause: function () {
+        var video = findVideoElement();
+        if (video && !video.paused) {
+          video.pause();
+        } else {
+          clickPlayPauseButton();
+        }
+      }
+    });
 
     watchForVideo();
     logger.log('YouTube Music content script initialized');
