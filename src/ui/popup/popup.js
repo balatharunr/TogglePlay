@@ -522,6 +522,13 @@ function setupEventListeners() {
         });
     });
 
+    document.querySelectorAll('.sync-mode-info').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+    });
+
     const downloadLogsLink = document.getElementById('downloadLogsLink');
     if (downloadLogsLink) {
         downloadLogsLink.addEventListener('click', async (e) => {
