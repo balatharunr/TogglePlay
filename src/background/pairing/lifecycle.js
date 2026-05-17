@@ -5,8 +5,15 @@ function registerTabLifecycleListeners() {
   chrome.tabs.onRemoved.addListener(function (tabId) {
     removePairsInvolvingTab(tabId);
   });
-
-
+  chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
+    if (changeInfo.status === 'complete' && tab.url && tab.title) {
+      if (TogglePlayPlatforms.getSourceType(tab.url)) {
+        if (typeof updatePairMetadata === 'function') {
+          updatePairMetadata(tabId, tab.title, tab.url);
+        }
+      }
+    }
+  });
 }
 
 async function removePairsInvolvingTab(tabId) {

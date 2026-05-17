@@ -38,3 +38,41 @@ async function addPair(tabId1, tabId2) {
     return { success: false, error: err.message };
   }
 }
+
+async function updatePairMetadata(tabId, title, url) {
+  var state = togglePlayBackgroundState;
+  tabId = TogglePlayStorageSerializers.normalizeTabId(tabId);
+  var pairInfo = state.pairs.get(tabId);
+  if (!pairInfo) return;
+
+  var changed = false;
+  if (title && pairInfo.title !== title) {
+    pairInfo.title = title;
+    changed = true;
+  }
+  if (url && pairInfo.url !== url) {
+    pairInfo.url = url;
+    changed = true;
+  }
+
+  if (changed) {
+    if (pairInfo.pairedWith) {
+      pairInfo.pairedWith.forEach(function(partner) {
+        var partnerId = partner.tabId;
+        var partnerInfo = state.pairs.get(partnerId);
+        if (partnerInfo && partnerInfo.pairedWith) {
+          partnerInfo.pairedWith.forEach(function(p) {
+            if (p.tabId === tabId) {
+              if (title) p.title = title;
+              if (url) p.url = url;
+            }
+          });
+        }
+      });
+    }
+
+    await persistBackgroundState({ pairs: true });
+    togglePlayLog('Updated pair metadata for tab', tabId, '->', title);
+    chrome.runtime.sendMessage({ type: 'PAIRS_UPDATED' }).catch(function(){});
+  }
+}

@@ -40,7 +40,7 @@
 
   function getPlaybackState(video) {
     if (!video) return false;
-    return !video.paused && !video.ended && video.currentTime > 0;
+    return !video.paused && !video.ended;
   }
 
   function findPlayPauseButton() {

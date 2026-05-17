@@ -593,6 +593,17 @@ function setupEventListeners() {
             }
         }
     }, 10000);
+    
+    // Listen for background updates
+    if (chrome.runtime && chrome.runtime.onMessage) {
+        chrome.runtime.onMessage.addListener((msg) => {
+            if (msg.type === 'PAIRS_UPDATED') {
+                log('Received instant update event from background');
+                loadActivePairs();
+                loadAvailableTabs();
+            }
+        });
+    }
 }
 
 /**
