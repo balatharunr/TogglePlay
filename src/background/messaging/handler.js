@@ -101,7 +101,7 @@ function registerBackgroundMessageHandler() {
               success: true,
               pairs: pairs,
               isEnabled: state.isEnabled,
-              syncMode: state.syncMode
+              exclusiveModeEnabled: state.exclusiveModeEnabled
             };
           }
 
@@ -126,14 +126,9 @@ function registerBackgroundMessageHandler() {
             await persistBackgroundState({ isEnabled: message.enabled });
             return { success: true };
 
-          case TogglePlayMessages.SET_SYNC_MODE: {
-            var mode = message.mode;
-            if (mode !== TogglePlayConfig.SYNC_MODES.EXCLUSIVE &&
-                mode !== TogglePlayConfig.SYNC_MODES.MIRROR) {
-              return { success: false, error: 'Invalid sync mode' };
-            }
-            await persistBackgroundState({ syncMode: mode });
-            return { success: true, syncMode: mode };
+          case TogglePlayMessages.SET_EXCLUSIVE_MODE: {
+            await persistBackgroundState({ exclusiveModeEnabled: message.enabled === true });
+            return { success: true, exclusiveModeEnabled: state.exclusiveModeEnabled };
           }
 
           case TogglePlayMessages.PAUSE_BOTH:

@@ -9,7 +9,7 @@ async function hydrateState() {
   try {
     var local = await loadLocalPreferences();
     state.isEnabled = local.isEnabled;
-    state.syncMode = local.syncMode;
+    state.exclusiveModeEnabled = local.exclusiveModeEnabled;
 
     var pairs = await loadSessionPairs();
     // Avoid a hydration race wiping pairs added before storage finished writing.
@@ -19,7 +19,7 @@ async function hydrateState() {
 
     await pruneInvalidPairs();
     await loadPersistedLogs();
-    togglePlayLog('State hydrated — pairs:', state.pairs.size, 'enabled:', state.isEnabled, 'mode:', state.syncMode);
+    togglePlayLog('State hydrated — pairs:', state.pairs.size, 'enabled:', state.isEnabled, 'exclusive:', state.exclusiveModeEnabled);
   } catch (err) {
     togglePlayError('Failed to hydrate state:', err);
   }

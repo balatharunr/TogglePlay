@@ -6,6 +6,9 @@
 // DOM Elements
 const elements = {
     enableToggle: null,
+    settingsBtn: null,
+    settingsPanel: null,
+    exclusiveModeToggle: null,
     statusIndicator: null,
     statusText: null,
     currentTab: null,
@@ -20,8 +23,20 @@ let state = {
     availableTabs: [],
     activePairs: [],
     isEnabled: true,
-    syncMode: 'exclusive',
+    exclusiveModeEnabled: false,
     isLoading: false
+};
+
+let lastRenderSnapshot = '';
+let refreshDebounceTimer = null;
+let refreshInFlight = null;
+const REFRESH_DEBOUNCE_MS = 400;
+const REFRESH_INTERVAL_MS = 20000;
+
+const currentTabEls = {
+    title: null,
+    url: null,
+    indicator: null
 };
 
 // Logging utility
@@ -38,11 +53,134 @@ function error(message, ...args) {
  */
 function initializeElements() {
     elements.enableToggle = document.getElementById('enableToggle');
+    elements.settingsBtn = document.getElementById('settingsBtn');
+    elements.settingsPanel = document.getElementById('settingsPanel');
+    elements.exclusiveModeToggle = document.getElementById('exclusiveModeToggle');
     elements.statusIndicator = document.getElementById('statusIndicator');
     elements.statusText = document.getElementById('statusText');
     elements.currentTab = document.getElementById('currentTab');
     elements.availableTabs = document.getElementById('availableTabs');
     elements.togglePairs = document.getElementById('togglePairs');
+
+    currentTabEls.title = elements.currentTab.querySelector('.tab-title');
+    currentTabEls.url = elements.currentTab.querySelector('.tab-url');
+    currentTabEls.indicator = elements.currentTab.querySelector('.tab-status .status-indicator');
+}
+
+function getDisplayHostname(url, sourceType) {
+    try {
+        return new URL(url).hostname;
+    } catch (e) {
+        if (sourceType === 'spotify') return 'open.spotify.com';
+        if (sourceType === 'ytmusic') return 'music.youtube.com';
+        return 'youtube.com';
+    }
+}
+
+function buildRenderSnapshot() {
+    const pair = state.activePairs[0];
+    const partner = pair && pair.pairedWith && pair.pairedWith[0];
+    return JSON.stringify({
+        currentTabId: state.currentTabId,
+        currentTitle: state._currentTabTitle || '',
+        currentHost: state._currentTabHost || '',
+        currentHasMedia: !!state._currentHasMedia,
+        tabs: state.availableTabs.map(function (t) {
+            return [t.id, t.title, t.url, t.webPlayerActive === false];
+        }),
+        pair: pair ? [pair.tabId, pair.title, partner && partner.tabId, partner && partner.title] : null,
+        isEnabled: state.isEnabled,
+        exclusive: state.exclusiveModeEnabled,
+        selectedTabId: state.selectedTabId
+    });
+}
+
+function syncSelectedFromPairs() {
+    const pair = state.activePairs[0];
+    if (pair && pair.pairedWith && pair.pairedWith.length > 0) {
+        state.selectedTabId = pair.pairedWith[0].tabId;
+    } else {
+        state.selectedTabId = null;
+    }
+}
+
+function syncControls() {
+    if (elements.enableToggle.checked !== state.isEnabled) {
+        elements.enableToggle.checked = state.isEnabled;
+    }
+    if (elements.exclusiveModeToggle &&
+        elements.exclusiveModeToggle.checked !== state.exclusiveModeEnabled) {
+        elements.exclusiveModeToggle.checked = state.exclusiveModeEnabled;
+    }
+}
+
+function renderAllIfChanged() {
+    const snapshot = buildRenderSnapshot();
+    if (snapshot === lastRenderSnapshot) {
+        return false;
+    }
+    lastRenderSnapshot = snapshot;
+    renderCurrentTab();
+    renderAvailableTabs();
+    renderActivePairs();
+    syncControls();
+    return true;
+}
+
+function scheduleRefresh(delay) {
+    if (refreshDebounceTimer) {
+        clearTimeout(refreshDebounceTimer);
+    }
+    refreshDebounceTimer = setTimeout(function () {
+        refreshDebounceTimer = null;
+        refreshPopupData();
+    }, delay == null ? REFRESH_DEBOUNCE_MS : delay);
+}
+
+async function refreshPopupData() {
+    if (refreshInFlight) {
+        return refreshInFlight;
+    }
+
+    refreshInFlight = (async function () {
+        try {
+            const [tabsResponse, pairsResponse, currentTab] = await Promise.all([
+                sendMessage({ type: TogglePlayMessages.GET_TABS }),
+                sendMessage({ type: TogglePlayMessages.GET_PAIRS }),
+                getCurrentTab()
+            ]);
+
+            state.availableTabs = tabsResponse.tabs || [];
+            state.currentTabId = currentTab && currentTab.id;
+            state.availableTabs = state.availableTabs.filter(function (tab) {
+                return tab.id !== state.currentTabId;
+            });
+
+            state.activePairs = pairsResponse.pairs || [];
+            state.isEnabled = pairsResponse.isEnabled !== false;
+            state.exclusiveModeEnabled = pairsResponse.exclusiveModeEnabled === true;
+            syncSelectedFromPairs();
+
+            state._currentTabRef = currentTab;
+            renderAllIfChanged();
+
+            const statusMsg = state.isEnabled ? 'Extension enabled' : 'Extension disabled';
+            if (elements.statusText.textContent !== statusMsg) {
+                updateStatus('', statusMsg);
+            }
+        } catch (err) {
+            error('Refresh failed:', err);
+            if (err.message && !err.message.includes('Chrome runtime not available')) {
+                updateStatus('error', 'Connection error');
+            }
+        }
+    })();
+
+    try {
+        return await refreshInFlight;
+    } finally {
+        refreshInFlight = null;
+    }
 }
 
 /**
@@ -73,8 +211,13 @@ function showNotification(message, type = 'success') {
  * Update status indicator
  */
 function updateStatus(status, message) {
-    elements.statusIndicator.className = `status-dot ${status}`;
-    elements.statusText.textContent = message;
+    const cls = status ? 'status-dot ' + status : 'status-dot';
+    if (elements.statusIndicator.className !== cls) {
+        elements.statusIndicator.className = cls;
+    }
+    if (elements.statusText.textContent !== message) {
+        elements.statusText.textContent = message;
+    }
 }
 
 /**
@@ -87,7 +230,6 @@ async function sendMessage(message) {
             throw new Error('Chrome runtime not available');
         }
         
-        log('Sending message to background:', message.type);
         const response = await chrome.runtime.sendMessage(message);
         
         if (chrome.runtime.lastError) {
@@ -98,7 +240,6 @@ async function sendMessage(message) {
             throw new Error(response.error);
         }
         
-        log('Received response:', response);
         return response;
     } catch (err) {
         error('Failed to send message to background:', err);
@@ -120,238 +261,199 @@ async function getCurrentTab() {
 }
 
 /**
- * Load available YouTube tabs
+ * Render current tab in place (no innerHTML — avoids layout flash).
  */
-async function loadAvailableTabs() {
-    try {
-        log('Loading available tabs...');
-        const response = await sendMessage({ type: TogglePlayMessages.GET_TABS });
-        state.availableTabs = response.tabs || [];
-        
-        // Get current tab
-        const currentTab = await getCurrentTab();
-        state.currentTabId = currentTab?.id;
-        
-        log('Current tab:', currentTab?.url);
-        log('All YouTube tabs found:', state.availableTabs.length);
-        
-        // Filter out current tab from available tabs
-        state.availableTabs = state.availableTabs.filter(tab => tab.id !== state.currentTabId);
-        
-        renderCurrentTab(currentTab);
-        renderAvailableTabs();
-        
-        log('Loaded tabs:', { current: state.currentTabId, available: state.availableTabs.length });
-    } catch (err) {
-        error('Failed to load available tabs:', err);
-        
-        // Set default state on error
-        state.availableTabs = [];
-        state.currentTabId = null;
-        
-        // Render empty state
-        renderCurrentTab(null);
-        renderAvailableTabs();
-        
-        // Only show error in console, not to user during initialization
-        if (err.message && !err.message.includes('Chrome runtime not available')) {
-            updateStatus('error', 'Failed to load tabs');
-        }
-    }
-}
-
-/**
- * Load active pairs
- */
-async function loadActivePairs() {
-    try {
-        log('Loading active pairs...');
-        const response = await sendMessage({ type: TogglePlayMessages.GET_PAIRS });
-        state.activePairs = response.pairs || [];
-        state.isEnabled = response.isEnabled !== false;
-        state.syncMode = response.syncMode || 'exclusive';
-        updateSyncModeUI();
-        
-        log('Loaded pairs:', state.activePairs.length, 'isEnabled:', state.isEnabled);
-        
-        // Update enable toggle
-        elements.enableToggle.checked = state.isEnabled;
-        
-        renderActivePairs();
-        
-        log('Loaded pairs:', state.activePairs.length);
-    } catch (err) {
-        error('Failed to load active pairs:', err);
-        
-        // Set default state on error
-        state.activePairs = [];
-        state.isEnabled = false;
-        elements.enableToggle.checked = false;
-        
-        // Render empty state
-        renderActivePairs();
-        
-        // Only show error in console, not to user during initialization
-        if (err.message && !err.message.includes('Chrome runtime not available')) {
-            updateStatus('error', 'Failed to load pairs');
-        }
-    }
-}
-
-/**
- * Render current tab (Primary tab)
- */
-function renderCurrentTab(tab) {
+function renderCurrentTab() {
     const container = elements.currentTab;
-    
+    const tab = state._currentTabRef;
+
     if (!tab || !tab.url || !TogglePlayPlatforms.isMediaUrl(tab.url)) {
-        container.classList.remove('has-media');
-        container.innerHTML = `
-            <div class="tab-info">
-                <span class="tab-title">No media tab active</span>
-                <span class="tab-url">Navigate to YouTube, YouTube Music, or Spotify</span>
-            </div>
-            <div class="tab-status">
-                <span class="status-indicator inactive"></span>
-            </div>
-        `;
+        state._currentHasMedia = false;
+        state._currentTabTitle = 'No media tab active';
+        state._currentTabHost = 'Navigate to YouTube, YouTube Music, or Spotify';
+        container.classList.toggle('has-media', false);
+        if (currentTabEls.title.textContent !== state._currentTabTitle) {
+            currentTabEls.title.textContent = state._currentTabTitle;
+        }
+        if (currentTabEls.url.textContent !== state._currentTabHost) {
+            currentTabEls.url.textContent = state._currentTabHost;
+        }
+        currentTabEls.indicator.className = 'status-indicator inactive';
         return;
     }
-    
-    container.classList.add('has-media');
-    
-    const title = tab.title || 'Media';
+
     const sourceType = TogglePlayPlatforms.getSourceType(tab.url);
     const icon = TogglePlayPlatforms.getSourceIcon(sourceType);
-    let displayUrl = '';
-    
-    try {
-        displayUrl = new URL(tab.url).hostname;
-    } catch (e) {
-        if (sourceType === 'spotify') {
-            displayUrl = 'open.spotify.com';
-        } else if (sourceType === 'ytmusic') {
-            displayUrl = 'music.youtube.com';
-        } else {
-            displayUrl = 'youtube.com';
-        }
+    state._currentHasMedia = true;
+    state._currentTabTitle = icon + ' ' + (tab.title || 'Media');
+    state._currentTabHost = getDisplayHostname(tab.url, sourceType);
+
+    container.classList.toggle('has-media', true);
+    if (currentTabEls.title.textContent !== state._currentTabTitle) {
+        currentTabEls.title.textContent = state._currentTabTitle;
     }
-    
-    container.innerHTML = `
-        <div class="tab-info">
-            <span class="tab-title">${icon} ${escapeHtml(title)}</span>
-            <span class="tab-url">${escapeHtml(displayUrl)}</span>
-        </div>
-        <div class="tab-status">
-            <span class="status-indicator active"></span>
-        </div>
-    `;
+    if (currentTabEls.url.textContent !== state._currentTabHost) {
+        currentTabEls.url.textContent = state._currentTabHost;
+    }
+    currentTabEls.indicator.className = 'status-indicator active';
+}
+
+function createAvailableTabRow(tab) {
+    const sourceType = tab.sourceType || TogglePlayPlatforms.getSourceType(tab.url);
+    const row = document.createElement('div');
+    row.className = 'available-tab-item';
+    row.dataset.tabId = String(tab.id);
+
+    const info = document.createElement('div');
+    info.className = 'available-tab-info';
+
+    const titleEl = document.createElement('span');
+    titleEl.className = 'available-tab-title';
+    info.appendChild(titleEl);
+
+    const urlEl = document.createElement('span');
+    urlEl.className = 'available-tab-url';
+    info.appendChild(urlEl);
+
+    row.appendChild(info);
+
+    const btn = document.createElement('button');
+    btn.className = 'select-button';
+    btn.type = 'button';
+    btn.dataset.tabId = String(tab.id);
+    row.appendChild(btn);
+
+    return row;
+}
+
+function updateAvailableTabRow(row, tab) {
+    const sourceType = tab.sourceType || TogglePlayPlatforms.getSourceType(tab.url);
+    const icon = TogglePlayPlatforms.getSourceIcon(sourceType);
+    const title = icon + ' ' + (tab.title || 'Media');
+    const host = getDisplayHostname(tab.url, sourceType);
+    const isSelected = tab.id === state.selectedTabId;
+
+    row.classList.toggle('selected', isSelected);
+
+    const titleEl = row.querySelector('.available-tab-title');
+    const urlEl = row.querySelector('.available-tab-url');
+    const btn = row.querySelector('.select-button');
+
+    if (titleEl.textContent !== title) titleEl.textContent = title;
+    if (urlEl.textContent !== host) urlEl.textContent = host;
+    if (btn.textContent !== (isSelected ? 'Selected' : 'Select')) {
+        btn.textContent = isSelected ? 'Selected' : 'Select';
+    }
+
+    let warning = row.querySelector('.spotify-device-warning');
+    const showWarning = tab.sourceType === 'spotify' && tab.webPlayerActive === false;
+    if (showWarning && !warning) {
+        warning = document.createElement('div');
+        warning.className = 'spotify-device-warning';
+        warning.textContent = 'Web player not active — playback is on another device';
+        row.querySelector('.available-tab-info').appendChild(warning);
+    } else if (!showWarning && warning) {
+        warning.remove();
+    }
 }
 
 /**
- * Render available tabs (Secondary tabs)
+ * Render available tabs with in-place diff (no full list rebuild).
  */
 function renderAvailableTabs() {
     const container = elements.availableTabs;
-    
+    const emptyMsg = 'No other YouTube, YouTube Music, or Spotify tabs found';
+
     if (state.availableTabs.length === 0) {
-        container.innerHTML = `
-            <div class="no-available-tabs">No other YouTube, YouTube Music, or Spotify tabs found</div>
-        `;
+        if (container.querySelector('.no-available-tabs')) {
+            return;
+        }
+        container.replaceChildren();
+        const empty = document.createElement('div');
+        empty.className = 'no-available-tabs';
+        empty.textContent = emptyMsg;
+        container.appendChild(empty);
         return;
     }
-    
-    const tabsHtml = state.availableTabs.map(tab => {
-        const title = tab.title || 'Media';
-        const sourceType = tab.sourceType || TogglePlayPlatforms.getSourceType(tab.url);
-        const icon = TogglePlayPlatforms.getSourceIcon(sourceType);
-        let displayUrl = '';
-        
-        try {
-            displayUrl = new URL(tab.url).hostname;
-        } catch (e) {
-            if (sourceType === 'spotify') {
-                displayUrl = 'open.spotify.com';
-            } else if (sourceType === 'ytmusic') {
-                displayUrl = 'music.youtube.com';
-            } else {
-                displayUrl = 'youtube.com';
-            }
+
+    const placeholder = container.querySelector('.no-available-tabs, .loading-message');
+    if (placeholder) placeholder.remove();
+
+    const seen = new Set();
+    state.availableTabs.forEach(function (tab) {
+        let row = container.querySelector('.available-tab-item[data-tab-id="' + tab.id + '"]');
+        if (!row) {
+            row = createAvailableTabRow(tab);
+            container.appendChild(row);
         }
-        
-        const isSelected = tab.id === state.selectedTabId;
-        const spotifyWarning = tab.sourceType === 'spotify' && tab.webPlayerActive === false
-            ? '<div class="spotify-device-warning">Web player not active — playback is on another device</div>'
-            : '';
-        
-        return `
-            <div class="available-tab-item ${isSelected ? 'selected' : ''}" data-tab-id="${tab.id}">
-                <div class="available-tab-info">
-                    <span class="available-tab-title">${icon} ${escapeHtml(title)}</span>
-                    <span class="available-tab-url">${escapeHtml(displayUrl)}</span>
-                    ${spotifyWarning}
-                </div>
-                <button class="select-button" data-tab-id="${tab.id}">
-                    ${isSelected ? 'Selected' : 'Select'}
-                </button>
-            </div>
-        `;
-    }).join('');
-    const newHtml = tabsHtml;
-    if (container.innerHTML !== newHtml) {
-        container.innerHTML = newHtml;
-    }
+        updateAvailableTabRow(row, tab);
+        seen.add(String(tab.id));
+    });
+
+    container.querySelectorAll('.available-tab-item').forEach(function (row) {
+        if (!seen.has(row.dataset.tabId)) {
+            row.remove();
+        }
+    });
 }
 
-/**
- * Render active pairs
- */
 function renderActivePairs() {
     const container = elements.togglePairs;
-    
-    if (state.activePairs.length === 0) {
-        container.innerHTML = `
-            <div class="no-pairs">No active pair configured</div>
-        `;
-        return;
-    }
-    
-    // Only show the first pair since only one is allowed
+    const emptyMsg = 'No active pair configured';
     const firstPair = state.activePairs[0];
-    if (!firstPair || !firstPair.pairedWith || firstPair.pairedWith.length === 0) {
-        container.innerHTML = `
-            <div class="no-pairs">No active pair configured</div>
-        `;
+    const pairedTab = firstPair && firstPair.pairedWith && firstPair.pairedWith[0];
+
+    if (!pairedTab) {
+        if (container.querySelector('.no-pairs')) {
+            return;
+        }
+        container.replaceChildren();
+        const empty = document.createElement('div');
+        empty.className = 'no-pairs';
+        empty.textContent = emptyMsg;
+        container.appendChild(empty);
         return;
     }
-    
-    const pairedTab = firstPair.pairedWith[0];
-    const title1 = firstPair.title || 'Media';
-    const title2 = pairedTab.title || 'Media';
-    const icon1 = TogglePlayPlatforms.getSourceIcon(firstPair.sourceType || TogglePlayPlatforms.getSourceType(firstPair.url));
-    const icon2 = TogglePlayPlatforms.getSourceIcon(pairedTab.sourceType || TogglePlayPlatforms.getSourceType(pairedTab.url));
-    
-    const pairHtml = `
-        <div class="pair-item">
-            <div class="pair-tabs">
-                <div class="pair-tab">
-                    <div class="pair-tab-title">${icon1} ${escapeHtml(title1)}</div>
-                    <div class="pair-tab-url">Tab ${firstPair.tabId}</div>
-                </div>
-                <div class="pair-arrow">↔</div>
-                <div class="pair-tab">
-                    <div class="pair-tab-title">${icon2} ${escapeHtml(title2)}</div>
-                    <div class="pair-tab-url">Tab ${pairedTab.tabId}</div>
-                </div>
-            </div>
-            <button class="remove-pair-btn" data-tab1="${firstPair.tabId}" data-tab2="${pairedTab.tabId}">
-                ×
-            </button>
-        </div>
-    `;
-    if (container.innerHTML !== pairHtml) {
-        container.innerHTML = pairHtml;
+
+    const emptyEl = container.querySelector('.no-pairs');
+    if (emptyEl) emptyEl.remove();
+
+    let item = container.querySelector('.pair-item');
+    if (!item) {
+        item = document.createElement('div');
+        item.className = 'pair-item';
+        item.innerHTML =
+            '<div class="pair-tabs">' +
+            '<div class="pair-tab"><div class="pair-tab-title"></div><div class="pair-tab-url"></div></div>' +
+            '<div class="pair-arrow">↔</div>' +
+            '<div class="pair-tab"><div class="pair-tab-title"></div><div class="pair-tab-url"></div></div>' +
+            '</div>' +
+            '<button type="button" class="remove-pair-btn">×</button>';
+        container.appendChild(item);
     }
+
+    const icon1 = TogglePlayPlatforms.getSourceIcon(
+        firstPair.sourceType || TogglePlayPlatforms.getSourceType(firstPair.url)
+    );
+    const icon2 = TogglePlayPlatforms.getSourceIcon(
+        pairedTab.sourceType || TogglePlayPlatforms.getSourceType(pairedTab.url)
+    );
+    const t1 = icon1 + ' ' + (firstPair.title || 'Media');
+    const t2 = icon2 + ' ' + (pairedTab.title || 'Media');
+    const u1 = 'Tab ' + firstPair.tabId;
+    const u2 = 'Tab ' + pairedTab.tabId;
+
+    const titles = item.querySelectorAll('.pair-tab-title');
+    const urls = item.querySelectorAll('.pair-tab-url');
+    const removeBtn = item.querySelector('.remove-pair-btn');
+
+    if (titles[0].textContent !== t1) titles[0].textContent = t1;
+    if (urls[0].textContent !== u1) urls[0].textContent = u1;
+    if (titles[1].textContent !== t2) titles[1].textContent = t2;
+    if (urls[1].textContent !== u2) urls[1].textContent = u2;
+
+    removeBtn.dataset.tab1 = String(firstPair.tabId);
+    removeBtn.dataset.tab2 = String(pairedTab.tabId);
 }
 
 /**
@@ -371,7 +473,8 @@ async function handleTabSelection(tabId) {
         // Deselect and clear all pairs
         state.selectedTabId = null;
         await removeAllPairs();
-        renderAvailableTabs();
+        lastRenderSnapshot = '';
+        renderAllIfChanged();
         return;
     }
     
@@ -394,9 +497,8 @@ async function handleTabSelection(tabId) {
                 elements.enableToggle.checked = true;
             }
             
-            // Reload and refresh UI
-            await loadActivePairs();
-            renderAvailableTabs();
+            lastRenderSnapshot = '';
+            await refreshPopupData();
         } else {
             error('Failed to create pair:', response?.error);
         }
@@ -421,8 +523,8 @@ async function removeAllPairs() {
             error('Failed to remove all pairs:', response?.error);
         }
         
-        // Reload pairs to reflect changes
-        await loadActivePairs();
+        lastRenderSnapshot = '';
+        await refreshPopupData();
     } catch (err) {
         error('Error removing all pairs:', err);
     }
@@ -443,7 +545,8 @@ async function handlePairRemoval(tab1Id, tab2Id) {
         
         if (response && response.success !== false) {
             showNotification('Pair removed successfully', 'success');
-            await loadActivePairs();
+            lastRenderSnapshot = '';
+            await refreshPopupData();
         } else {
             throw new Error(response?.error || 'Failed to remove pair');
         }
@@ -453,31 +556,30 @@ async function handlePairRemoval(tab1Id, tab2Id) {
     }
 }
 
-/**
- * Sync mode UI
- */
-function updateSyncModeUI() {
-    const radios = document.querySelectorAll('input[name="syncMode"]');
-    radios.forEach(function (radio) {
-        radio.checked = radio.value === state.syncMode;
-    });
+function setSettingsPanelOpen(open) {
+    if (!elements.settingsPanel || !elements.settingsBtn) return;
+    elements.settingsPanel.hidden = !open;
+    elements.settingsBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    elements.settingsBtn.classList.toggle('is-open', open);
 }
 
-async function handleSyncModeChange(mode) {
+async function handleExclusiveModeChange(enabled) {
     try {
         const response = await sendMessage({
-            type: TogglePlayMessages.SET_SYNC_MODE,
-            mode: mode
+            type: TogglePlayMessages.SET_EXCLUSIVE_MODE,
+            enabled: enabled
         });
 
         if (response && response.success !== false) {
-            state.syncMode = mode;
+            state.exclusiveModeEnabled = enabled;
+            lastRenderSnapshot = '';
+            syncControls();
         } else {
-            updateSyncModeUI();
+            syncControls();
         }
     } catch (err) {
-        error('Failed to set sync mode:', err);
-        updateSyncModeUI();
+        error('Failed to set exclusive mode:', err);
+        syncControls();
     }
 }
 
@@ -517,20 +619,27 @@ function setupEventListeners() {
         handleToggleEnable(e.target.checked);
     });
 
-    document.querySelectorAll('input[name="syncMode"]').forEach(function (radio) {
-        radio.addEventListener('change', function (e) {
-            if (e.target.checked) {
-                handleSyncModeChange(e.target.value);
+    if (elements.settingsBtn && elements.settingsPanel) {
+        elements.settingsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = elements.settingsBtn.getAttribute('aria-expanded') === 'true';
+            setSettingsPanelOpen(!isOpen);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!elements.settingsPanel.hidden &&
+                !e.target.closest('.settings-wrapper') &&
+                !e.target.closest('#settingsPanel')) {
+                setSettingsPanelOpen(false);
             }
         });
-    });
+    }
 
-    document.querySelectorAll('.sync-mode-info').forEach(function (btn) {
-        btn.addEventListener('click', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
+    if (elements.exclusiveModeToggle) {
+        elements.exclusiveModeToggle.addEventListener('change', (e) => {
+            handleExclusiveModeChange(e.target.checked);
         });
-    });
+    }
 
     const downloadLogsLink = document.getElementById('downloadLogsLink');
     if (downloadLogsLink) {
@@ -584,35 +693,16 @@ function setupEventListeners() {
         }
     });
     
-    // Auto-refresh data every 10 seconds
-    setInterval(async () => {
+    setInterval(function () {
         if (!state.isLoading) {
-            try {
-                await loadAvailableTabs();
-                await loadActivePairs();
-                updateStatus('', state.isEnabled ? 'Extension enabled' : 'Extension disabled');
-            } catch (err) {
-                updateStatus('error', 'Connection error');
-            }
+            scheduleRefresh(0);
         }
-    }, 10000);
+    }, REFRESH_INTERVAL_MS);
 
-    // Debounced UI refresh to prevent flickering
-    let refreshTimeout = null;
-    function debouncedRefresh() {
-        if (refreshTimeout) clearTimeout(refreshTimeout);
-        refreshTimeout = setTimeout(() => {
-            log('Running debounced UI refresh');
-            loadActivePairs();
-            loadAvailableTabs();
-        }, 150);
-    }
-
-    // Listen for background updates
     if (chrome.runtime && chrome.runtime.onMessage) {
-        chrome.runtime.onMessage.addListener((msg) => {
+        chrome.runtime.onMessage.addListener(function (msg) {
             if (msg.type === 'PAIRS_UPDATED' || msg.type === 'TABS_UPDATED') {
-                debouncedRefresh();
+                scheduleRefresh();
             }
         });
     }
@@ -686,27 +776,21 @@ async function initialize() {
         // Set up event listeners
         setupEventListeners();
         
-        // Show loading state
-        elements.currentTab.innerHTML = `
-            <div class="tab-info">
-                <span class="tab-title">Loading current tab...</span>
-                <span class="tab-url"></span>
-            </div>
-            <div class="tab-status">
-                <span class="status-indicator inactive"></span>
-            </div>
-        `;
-        
-        elements.availableTabs.innerHTML = `
-            <div class="loading-message">Loading available tabs...</div>
-        `;
-        
-        // Load initial data with retry
-        await retryOperation(async () => {
-            await Promise.all([
-                loadAvailableTabs(),
-                loadActivePairs()
-            ]);
+        if (currentTabEls.title) {
+            currentTabEls.title.textContent = 'Loading current tab...';
+        }
+        if (currentTabEls.url) {
+            currentTabEls.url.textContent = '';
+        }
+
+        elements.availableTabs.replaceChildren();
+        const loading = document.createElement('div');
+        loading.className = 'loading-message';
+        loading.textContent = 'Loading available tabs...';
+        elements.availableTabs.appendChild(loading);
+
+        await retryOperation(function () {
+            return refreshPopupData();
         }, 3, 500);
         
         // Update status

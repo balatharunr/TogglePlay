@@ -5,12 +5,16 @@ async function loadLocalPreferences() {
   var keys = TogglePlayConfig.STORAGE_KEYS;
   var data = await chrome.storage.local.get([
     keys.ENABLED,
+    keys.EXCLUSIVE_MODE,
     keys.SYNC_MODE
   ]);
 
+  // Pairing always mirrors unless the user explicitly enables exclusive in settings.
+  var exclusiveModeEnabled = data[keys.EXCLUSIVE_MODE] === true;
+
   return {
     isEnabled: data[keys.ENABLED] !== false,
-    syncMode: data[keys.SYNC_MODE] || TogglePlayConfig.DEFAULT_SYNC_MODE
+    exclusiveModeEnabled: exclusiveModeEnabled === true
   };
 }
 
@@ -21,8 +25,8 @@ async function saveLocalPreferences(partial) {
   if (partial.isEnabled !== undefined) {
     payload[keys.ENABLED] = partial.isEnabled;
   }
-  if (partial.syncMode !== undefined) {
-    payload[keys.SYNC_MODE] = partial.syncMode;
+  if (partial.exclusiveModeEnabled !== undefined) {
+    payload[keys.EXCLUSIVE_MODE] = partial.exclusiveModeEnabled;
   }
 
   if (Object.keys(payload).length > 0) {
@@ -53,9 +57,9 @@ async function persistBackgroundState(fields) {
     tasks.push(saveLocalPreferences({ isEnabled: fields.isEnabled }));
   }
 
-  if (fields.syncMode !== undefined) {
-    state.syncMode = fields.syncMode;
-    tasks.push(saveLocalPreferences({ syncMode: fields.syncMode }));
+  if (fields.exclusiveModeEnabled !== undefined) {
+    state.exclusiveModeEnabled = fields.exclusiveModeEnabled;
+    tasks.push(saveLocalPreferences({ exclusiveModeEnabled: fields.exclusiveModeEnabled }));
   }
 
   if (fields.pairs !== undefined) {

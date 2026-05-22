@@ -45,34 +45,42 @@ async function updatePairMetadata(tabId, title, url) {
   var pairInfo = state.pairs.get(tabId);
   if (!pairInfo) return;
 
-  var changed = false;
+  var titleChanged = false;
+  var urlChanged = false;
+
   if (title && pairInfo.title !== title) {
     pairInfo.title = title;
-    changed = true;
+    titleChanged = true;
   }
   if (url && pairInfo.url !== url) {
     pairInfo.url = url;
-    changed = true;
+    urlChanged = true;
   }
 
-  if (changed) {
-    if (pairInfo.pairedWith) {
-      pairInfo.pairedWith.forEach(function(partner) {
-        var partnerId = partner.tabId;
-        var partnerInfo = state.pairs.get(partnerId);
-        if (partnerInfo && partnerInfo.pairedWith) {
-          partnerInfo.pairedWith.forEach(function(p) {
-            if (p.tabId === tabId) {
-              if (title) p.title = title;
-              if (url) p.url = url;
-            }
-          });
-        }
-      });
-    }
+  if (!titleChanged && !urlChanged) {
+    return;
+  }
 
-    await persistBackgroundState({ pairs: true });
-    togglePlayLog('Updated pair metadata for tab', tabId, '->', title);
-    chrome.runtime.sendMessage({ type: 'PAIRS_UPDATED' }).catch(function(){});
+  if (pairInfo.pairedWith) {
+    pairInfo.pairedWith.forEach(function (partner) {
+      var partnerId = partner.tabId;
+      var partnerInfo = state.pairs.get(partnerId);
+      if (partnerInfo && partnerInfo.pairedWith) {
+        partnerInfo.pairedWith.forEach(function (p) {
+          if (p.tabId === tabId) {
+            if (title) p.title = title;
+            if (url) p.url = url;
+          }
+        });
+      }
+    });
+  }
+
+  await persistBackgroundState({ pairs: true });
+  togglePlayLog('Updated pair metadata for tab', tabId, '->', title);
+
+  // Title churn (e.g. YouTube view counts) must not refresh the popup every second.
+  if (urlChanged) {
+    chrome.runtime.sendMessage({ type: 'PAIRS_UPDATED' }).catch(function () {});
   }
 }

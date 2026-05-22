@@ -92,7 +92,8 @@ body {
   background: var(--bg-base);
   width: 380px;
   min-height: 100px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -116,7 +117,8 @@ body {
   background: var(--bg-base);
   border-bottom: 1px solid var(--border-subtle);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
+  z-index: 10;
 }
 
 /* Subtle gradient glow behind the header */
@@ -536,131 +538,85 @@ input:focus-visible + .slider {
 }
 
 /* ══════════════════════════════════════
-   SYNC MODE
+   HEADER SETTINGS
    ══════════════════════════════════════ */
-.sync-mode-container {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.sync-mode-options {
-  display: flex;
-  gap: 8px;
-}
-
-.sync-mode-segment {
+.settings-wrapper {
   position: relative;
-  flex: 1;
-  display: flex;
-  min-width: 0;
-  background: var(--bg-card);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm);
-  overflow: visible;
-  transition: var(--transition-fast);
+  z-index: 100;
 }
 
-.sync-mode-segment:has(input:checked) {
-  border-color: var(--border-focus);
-  background: var(--accent-glow);
-  box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.15);
-}
-
-.sync-mode-segment:hover {
-  border-color: var(--border-focus);
-}
-
-.sync-mode-segment-btn {
-  flex: 1;
+.settings-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 9px 8px;
-  min-width: 0;
-  font-size: 13px;
-  font-weight: 600;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
   color: var(--text-secondary);
   cursor: pointer;
   transition: var(--transition-fast);
 }
 
-.sync-mode-segment:has(input:checked) .sync-mode-segment-btn {
+.settings-btn:hover,
+.settings-btn:focus-visible {
   color: var(--text-primary);
-}
-
-.sync-mode-segment-btn input {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-  pointer-events: none;
-}
-
-.sync-mode-info {
-  position: relative;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  padding: 0;
-  background: transparent;
-  border: none;
-  border-left: 1px solid var(--border-subtle);
-  color: var(--text-tertiary);
-  cursor: help;
-  transition: var(--transition-fast);
-}
-
-.sync-mode-info:hover,
-.sync-mode-info:focus-visible {
-  color: var(--info);
-  background: rgba(96, 165, 250, 0.08);
+  border-color: var(--border-focus);
+  background: var(--bg-card-hover);
   outline: none;
 }
 
-.sync-mode-info::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  right: 0;
-  bottom: calc(100% + 8px);
-  z-index: 20;
-  width: max-content;
-  max-width: 200px;
-  padding: 8px 10px;
-  font-size: 11px;
-  font-weight: 400;
-  line-height: 1.4;
-  color: var(--text-primary);
-  text-align: left;
-  white-space: normal;
+.settings-btn.is-open {
+  color: var(--text-accent);
+  border-color: var(--border-focus);
+  background: var(--accent-glow);
+}
+
+.settings-panel {
+  position: fixed;
+  top: 52px;
+  right: 14px;
+  z-index: 1000;
+  width: 260px;
+  padding: 12px;
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-elevated);
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transform: translateY(4px);
-  transition: opacity var(--transition-fast), transform var(--transition-fast), visibility var(--transition-fast);
+  animation: slide-up 200ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.sync-mode-segment:first-child .sync-mode-info::after {
-  left: 0;
-  right: auto;
+.settings-panel-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
 }
 
-.sync-mode-info:hover::after,
-.sync-mode-info:focus-visible::after {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
+.settings-panel-label {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-panel-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.settings-panel-desc {
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.settings-toggle {
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .spotify-device-warning {
@@ -962,16 +918,6 @@ input:focus-visible + .slider {
 @keyframes fade-in {
   from { opacity: 0; }
   to   { opacity: 1; }
-}
-
-/* Entry animations */
-.tab-item,
-.available-tab-item {
-  animation: fade-in 200ms ease-out;
-}
-
-.pair-item {
-  animation: slide-up 300ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* ══════════════════════════════════════

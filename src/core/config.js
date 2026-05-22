@@ -4,14 +4,11 @@
 var TogglePlayConfig = {
   STORAGE_KEYS: {
     ENABLED: 'togglePlayEnabled',
+    EXCLUSIVE_MODE: 'togglePlayExclusiveMode',
+    /** @deprecated migrated to EXCLUSIVE_MODE */
     SYNC_MODE: 'togglePlaySyncMode',
     PAIRS_SESSION: 'togglePlayPairsSession'
   },
-  SYNC_MODES: {
-    EXCLUSIVE: 'exclusive',
-    MIRROR: 'mirror'
-  },
-  DEFAULT_SYNC_MODE: 'exclusive',
   DEBOUNCE_MS: {
     YOUTUBE: 300,
     YTMUSIC: 150,

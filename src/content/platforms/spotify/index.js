@@ -34,101 +34,124 @@
     TogglePlayConfig.DEBOUNCE_MS.SPOTIFY
   );
 
+  function getButtonLabel(button) {
+    if (!button) return '';
+    return (button.getAttribute('aria-label') || button.getAttribute('title') || '').trim();
+  }
+
   function findPlayPauseButton() {
+    var bar = document.querySelector('[data-testid="now-playing-bar"]') ||
+      document.querySelector('.Root__now-playing-bar') ||
+      document.querySelector('.now-playing-bar');
+
+    var scopes = bar ? [bar, document] : [document];
     var selectors = [
       'button[data-testid="control-button-playpause"]',
       '[data-testid="control-button-playpause"]',
+      'button[data-testid="play-button"]',
       'button[aria-label="Pause"]',
       'button[aria-label="Play"]',
-      '.player-controls button[aria-label="Pause"]',
-      '.player-controls button[aria-label="Play"]'
+      'button[title="Pause"]',
+      'button[title="Play"]'
     ];
 
-    for (var i = 0; i < selectors.length; i++) {
-      var button = document.querySelector(selectors[i]);
-      if (button) return button;
+    for (var s = 0; s < scopes.length; s++) {
+      for (var i = 0; i < selectors.length; i++) {
+        var button = scopes[s].querySelector(selectors[i]);
+        if (button && button.tagName === 'BUTTON') {
+          return button;
+        }
+      }
     }
     return null;
   }
 
-  function isWebPlayerActive() {
-    var connectSelectors = [
-      '[data-testid="connect-device"]',
-      '[data-testid="web-player-connect-device"]',
-      'button[aria-label*="Connect to a device"]',
-      'button[aria-label*="Listen on another device"]'
-    ];
-
-    for (var i = 0; i < connectSelectors.length; i++) {
-      if (document.querySelector(connectSelectors[i])) {
-        return false;
-      }
-    }
-
-    var button = findPlayPauseButton();
+  /**
+   * True only when Spotify is playing on another device (phone, speaker, etc.).
+   * The "Connect to a device" button is always visible on web — not a signal.
+   */
+  function isPlaybackOnRemoteDevice(button) {
+    button = button || findPlayPauseButton();
     if (!button) {
-      return true;
+      return false;
     }
 
-    var label = (button.getAttribute('aria-label') || '').toLowerCase();
-    if (label.indexOf('play on ') === 0) {
-      return false;
+    var label = getButtonLabel(button).toLowerCase();
+    if (label.indexOf('play on ') === 0 || label.indexOf('listen on ') === 0) {
+      return true;
     }
 
     var devicePicker = document.querySelector('[data-testid="device-picker-button"]');
     if (devicePicker) {
       var pickerLabel = (devicePicker.getAttribute('aria-label') || '').toLowerCase();
-      if (pickerLabel.indexOf('listening on') !== -1 &&
-          pickerLabel.indexOf('web') === -1 &&
-          pickerLabel.indexOf('browser') === -1 &&
-          pickerLabel.indexOf('this computer') === -1) {
-        return false;
+      if (pickerLabel.indexOf('listening on') === 0) {
+        var onWeb = pickerLabel.indexOf('web player') !== -1 ||
+          pickerLabel.indexOf('this computer') !== -1 ||
+          pickerLabel.indexOf('this browser') !== -1 ||
+          pickerLabel.indexOf('chrome') !== -1 ||
+          pickerLabel.indexOf('safari') !== -1 ||
+          pickerLabel.indexOf('firefox') !== -1 ||
+          pickerLabel.indexOf('edge') !== -1;
+        if (!onWeb) {
+          return true;
+        }
       }
-    }
-
-    if (button.disabled || button.getAttribute('aria-disabled') === 'true') {
-      return false;
-    }
-
-    return true;
-  }
-
-  function getPlaybackState() {
-    if (!isWebPlayerActive()) {
-      return false;
-    }
-
-    var button = findPlayPauseButton();
-    if (!button) return false;
-
-    var ariaLabel = (button.getAttribute('aria-label') || '').toLowerCase();
-    if (ariaLabel.includes('pause')) return true;
-    if (ariaLabel.includes('play')) return false;
-
-    var svg = button.querySelector('svg');
-    if (svg) {
-      if (svg.querySelectorAll('rect').length >= 2) return true;
-      if (svg.querySelectorAll('polygon').length > 0) return false;
     }
 
     return false;
   }
 
+  function isWebPlayerActive() {
+    var button = findPlayPauseButton();
+    if (!button) {
+      return false;
+    }
+    return !isPlaybackOnRemoteDevice(button);
+  }
+
+  function isPlayingFromButton(button) {
+    if (!button) return false;
+
+    var label = getButtonLabel(button).toLowerCase();
+    if (label === 'pause' || label.indexOf('pause') === 0) {
+      return true;
+    }
+    if (label === 'play' || label.indexOf('play') === 0) {
+      return false;
+    }
+
+    var svg = button.querySelector('svg');
+    if (svg) {
+      if (svg.querySelectorAll('rect').length >= 2) return true;
+      if (svg.querySelectorAll('polygon, path[d*="M8"]').length > 0) return false;
+    }
+
+    return false;
+  }
+
+  function getPlaybackState() {
+    var button = findPlayPauseButton();
+    if (!button || isPlaybackOnRemoteDevice(button)) {
+      return false;
+    }
+    return isPlayingFromButton(button);
+  }
+
   function controlPlayback(action) {
     logger.log('Control request:', action);
 
-    if (!isWebPlayerActive()) {
-      logger.log('Spotify web player is not the active device');
-      return { success: false, reason: 'DEVICE_NOT_WEB' };
-    }
-
     var button = findPlayPauseButton();
     if (!button) {
-      logger.log('ERROR: No play/pause button found - is Spotify player loaded?');
+      logger.log('No play/pause button found — is the Spotify player loaded?');
       return { success: false, reason: 'NO_PLAYER' };
     }
 
-    var isCurrentlyPlaying = getPlaybackState();
+    if (isPlaybackOnRemoteDevice(button)) {
+      logger.log('Spotify is playing on another device, not this browser tab');
+      return { success: false, reason: 'DEVICE_NOT_WEB' };
+    }
+
+    var isCurrentlyPlaying = isPlayingFromButton(button);
 
     if (action === 'PLAY' && !isCurrentlyPlaying) {
       button.click();

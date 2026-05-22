@@ -1,3 +1,76 @@
+function prunePendingCommands(state) {
+  if (!state.pendingCommands) {
+    state.pendingCommands = new Map();
+    return;
+  }
+  for (var entry of state.pendingCommands.entries()) {
+    if (Date.now() - entry[1] > 5000) {
+      state.pendingCommands.delete(entry[0]);
+    }
+  }
+}
+
+function registerPendingCommand(state) {
+  prunePendingCommands(state);
+  var commandId = 'cmd_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+  state.pendingCommands.set(commandId, Date.now());
+  return commandId;
+}
+
+async function controlTabPlayback(tabId, action, commandId) {
+  var state = togglePlayBackgroundState;
+  tabId = TogglePlayStorageSerializers.normalizeTabId(tabId);
+  var cmdId = commandId || registerPendingCommand(state);
+
+  state.controlledTabs.add(tabId);
+  try {
+    var response = await sendMessageToTab(tabId, {
+      type: TogglePlayMessages.CONTROL_PLAYBACK,
+      action: action,
+      commandId: cmdId
+    });
+
+    setTimeout(function () {
+      state.controlledTabs.delete(tabId);
+    }, TogglePlayConfig.CONTROLLED_TAB_TIMEOUT_MS || 1000);
+
+    return response;
+  } catch (err) {
+    state.controlledTabs.delete(tabId);
+    throw err;
+  }
+}
+
+/** Pause every other media tab so only one plays in the browser. */
+async function pauseOtherMediaTabs(playingTabId) {
+  var state = togglePlayBackgroundState;
+  playingTabId = TogglePlayStorageSerializers.normalizeTabId(playingTabId);
+  var mediaTabs = await getAllMediaTabs();
+  var paused = 0;
+
+  for (var i = 0; i < mediaTabs.length; i++) {
+    var otherId = TogglePlayStorageSerializers.normalizeTabId(mediaTabs[i].id);
+    if (otherId === playingTabId) {
+      continue;
+    }
+
+    try {
+      var response = await controlTabPlayback(otherId, 'PAUSE');
+      if (response && response.success !== false) {
+        paused++;
+      }
+    } catch (err) {
+      togglePlayLog('Could not pause tab ' + otherId + ' for exclusive audio:', err.message);
+    }
+  }
+
+  if (paused > 0) {
+    togglePlayLog('Exclusive audio: paused', paused, 'other tab(s)');
+  }
+
+  return paused;
+}
+
 async function handlePlaybackStateChange(tabId, isPlaying, commandId) {
   var state = togglePlayBackgroundState;
   tabId = TogglePlayStorageSerializers.normalizeTabId(tabId);
@@ -21,73 +94,65 @@ async function handlePlaybackStateChange(tabId, isPlaying, commandId) {
   }
 
   var pairInfo = getPairForTab(tabId);
-  if (!pairInfo || !pairInfo.pairedWith || pairInfo.pairedWith.length === 0) {
+  var hasPair = pairInfo && pairInfo.pairedWith && pairInfo.pairedWith.length > 0;
+  var result = { success: true };
+
+  if (hasPair) {
+    var action = TogglePlaySyncModes.resolveMirrorAction(isPlaying);
+    var pairedTabId = TogglePlayStorageSerializers.normalizeTabId(pairInfo.pairedWith[0].tabId);
+    var controlAction = action === TogglePlaySyncModes.ACTIONS.PLAY_PARTNER ? 'PLAY' : 'PAUSE';
+
+    togglePlayLog('Tab ' + tabId + ' is now:', isPlaying ? 'PLAYING' : 'PAUSED', '→', action);
+
+    try {
+      var response = await controlTabPlayback(pairedTabId, controlAction);
+
+      if (!response) {
+        togglePlayLog(
+          'Partner tab ' + pairedTabId + ' did not respond — refresh that tab after installing/reloading the extension'
+        );
+        return {
+          success: false,
+          error: 'partner_unreachable',
+          pairedTabId: pairedTabId
+        };
+      }
+
+      if (response.success === false) {
+        var reason = response.reason || response.error;
+        if (reason === 'DEVICE_NOT_WEB') {
+          togglePlayLog(
+            'Spotify partner tab is not the active device — open Spotify here and choose This computer'
+          );
+          return { success: true, skipped: 'device_not_web', pairedTabId: pairedTabId };
+        }
+        togglePlayLog('Partner control failed:', reason);
+        return {
+          success: false,
+          error: reason,
+          pairedTabId: pairedTabId
+        };
+      }
+
+      result = {
+        success: true,
+        partnerAction: controlAction,
+        pairedTabId: pairedTabId
+      };
+    } catch (err) {
+      togglePlayError('Failed to control paired tab:', err);
+      return { success: false, error: err.message, pairedTabId: pairedTabId };
+    }
+  } else if (!state.exclusiveModeEnabled) {
     togglePlayLog('No pair found for tab', tabId, '(pairs in memory:', state.pairs.size + ')');
     return { success: true, skipped: 'no_pair' };
   }
 
-  var action = TogglePlaySyncModes.resolveAction(state.syncMode, isPlaying);
-  if (action === TogglePlaySyncModes.ACTIONS.NONE) {
-    togglePlayLog('Exclusive mode: pause on tab ' + tabId + ' — no partner action');
-    return { success: true, skipped: 'exclusive_pause' };
+  if (state.exclusiveModeEnabled && isPlaying) {
+    result.exclusivePaused = await pauseOtherMediaTabs(tabId);
   }
 
-  togglePlayLog('Tab ' + tabId + ' is now:', isPlaying ? 'PLAYING' : 'PAUSED', '→', action);
-
-  var pairedTabId = TogglePlayStorageSerializers.normalizeTabId(pairInfo.pairedWith[0].tabId);
-  var controlAction = action === TogglePlaySyncModes.ACTIONS.PLAY_PARTNER ? 'PLAY' : 'PAUSE';
-
-  var newCommandId = 'cmd_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-  if (!state.pendingCommands) state.pendingCommands = new Map();
-  state.pendingCommands.set(newCommandId, Date.now());
-  
-  // Cleanup old commands
-  for (var [id, time] of state.pendingCommands.entries()) {
-    if (Date.now() - time > 5000) state.pendingCommands.delete(id);
-  }
-
-  try {
-    state.controlledTabs.add(pairedTabId);
-    var response = await sendMessageToTab(pairedTabId, {
-      type: TogglePlayMessages.CONTROL_PLAYBACK,
-      action: controlAction,
-      commandId: newCommandId
-    });
-
-    if (!response) {
-      togglePlayLog(
-        'Partner tab ' + pairedTabId + ' did not respond — refresh that tab after installing/reloading the extension'
-      );
-      return {
-        success: false,
-        error: 'partner_unreachable',
-        pairedTabId: pairedTabId
-      };
-    }
-
-    if (response.success === false) {
-      togglePlayLog('Partner control failed:', response.reason || response.error);
-      return {
-        success: false,
-        error: response.reason || response.error,
-        pairedTabId: pairedTabId
-      };
-    }
-
-    setTimeout(function () {
-      state.controlledTabs.delete(pairedTabId);
-    }, TogglePlayConfig.CONTROLLED_TAB_TIMEOUT_MS || 1000);
-
-    return {
-      success: true,
-      partnerAction: controlAction,
-      pairedTabId: pairedTabId
-    };
-  } catch (err) {
-    state.controlledTabs.delete(pairedTabId);
-    togglePlayError('Failed to control paired tab:', err);
-    return { success: false, error: err.message, pairedTabId: pairedTabId };
-  }
+  return result;
 }
 
 async function handlePauseBoth(senderTabId) {

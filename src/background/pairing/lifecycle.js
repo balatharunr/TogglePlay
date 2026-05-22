@@ -7,14 +7,22 @@ function registerTabLifecycleListeners() {
     chrome.runtime.sendMessage({ type: 'TABS_UPDATED' }).catch(function(){});
   });
   chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
-    // Only process if the URL or title actually changed (SPA navigation or regular load)
-    if ((changeInfo.url || changeInfo.title) && tab.url && tab.title) {
-      if (TogglePlayPlatforms.getSourceType(tab.url)) {
-        if (typeof updatePairMetadata === 'function') {
-          updatePairMetadata(tabId, tab.title, tab.url);
-        }
-      }
-      chrome.runtime.sendMessage({ type: 'TABS_UPDATED' }).catch(function(){});
+    if (!tab.url || !tab.title) {
+      return;
+    }
+
+    var isMedia = TogglePlayPlatforms.getSourceType(tab.url);
+    if (!isMedia) {
+      return;
+    }
+
+    if (changeInfo.title && typeof updatePairMetadata === 'function') {
+      updatePairMetadata(tabId, tab.title, tab.url);
+    }
+
+    // URL changes can add/remove tabs from the list; title-only updates are silent.
+    if (changeInfo.url) {
+      chrome.runtime.sendMessage({ type: 'TABS_UPDATED' }).catch(function () {});
     }
   });
 }

@@ -1,31 +1,20 @@
 /**
- * Sync mode state machine: Exclusive (default) vs Mirror.
+ * Paired tabs always mirror: play → pause partner, pause → play partner.
  */
 var TogglePlaySyncModes = (function () {
   'use strict';
 
   var ACTIONS = {
     PAUSE_PARTNER: 'PAUSE_PARTNER',
-    PLAY_PARTNER: 'PLAY_PARTNER',
-    NONE: 'NONE'
+    PLAY_PARTNER: 'PLAY_PARTNER'
   };
 
-  function resolveAction(syncMode, isPlaying) {
-    var mode = syncMode || TogglePlayConfig.DEFAULT_SYNC_MODE;
-
-    if (mode === TogglePlayConfig.SYNC_MODES.MIRROR) {
-      return isPlaying ? ACTIONS.PAUSE_PARTNER : ACTIONS.PLAY_PARTNER;
-    }
-
-    // Exclusive: only pause the partner when this tab starts playing.
-    if (isPlaying) {
-      return ACTIONS.PAUSE_PARTNER;
-    }
-    return ACTIONS.NONE;
+  function resolveMirrorAction(isPlaying) {
+    return isPlaying ? ACTIONS.PAUSE_PARTNER : ACTIONS.PLAY_PARTNER;
   }
 
   return {
     ACTIONS: ACTIONS,
-    resolveAction: resolveAction
+    resolveMirrorAction: resolveMirrorAction
   };
 })();
