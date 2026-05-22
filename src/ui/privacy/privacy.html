@@ -15,7 +15,7 @@
         <span class="brand-name">TogglePlay</span>
       </div>
       <h1 class="page-title">Privacy Policy</h1>
-      <p class="page-subtitle">Last updated: <time datetime="2026-05-17">May 17, 2026</time> · Version 1.2.1</p>
+      <p class="page-subtitle">Last updated: <time datetime="2026-05-22">May 22, 2026</time> · Version 2.0.0</p>
     </header>
 
     <div class="divider"></div>
@@ -43,8 +43,8 @@
         </div>
         <h2>What TogglePlay does</h2>
       </div>
-      <p>TogglePlay automatically toggles play/pause between media tabs so you can seamlessly switch between music and video without manually pausing one before playing another.</p>
-      <p>It works exclusively with these platforms:</p>
+      <p>TogglePlay pairs two media tabs and automatically toggles play/pause between them — pause one tab and the partner plays, or vice versa. An optional setting can also keep only one media tab playing sound in your browser at a time.</p>
+      <p>It only runs on these platforms:</p>
       <div class="platforms">
         <span class="platform-chip">
           <svg viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="4" fill="#FF0000"/><path d="M9.5 7.5v9l7-4.5-7-4.5z" fill="#fff"/></svg>
@@ -69,14 +69,21 @@
         </div>
         <h2>Data collection</h2>
       </div>
-      <p>TogglePlay does <strong style="color: var(--text-primary);">not</strong> collect, store, or transmit any data whatsoever. Specifically:</p>
+      <p>TogglePlay does <strong style="color: var(--text-primary);">not</strong> collect, transmit, or sell personal data. We do not run analytics, ads, or remote servers. Specifically:</p>
       <ul class="clean-list">
-        <li><strong>No personal information</strong> — we never access your name, email, or any identifiers</li>
-        <li><strong>No browsing history</strong> — we don't track which pages you visit or when</li>
-        <li><strong>No media consumption data</strong> — we don't record what you watch or listen to</li>
+        <li><strong>No personal information</strong> — we never access your name, email, or account identifiers</li>
+        <li><strong>No browsing history database</strong> — we don't build a history of what you watch or listen to</li>
         <li><strong>No network requests</strong> — the extension never contacts any external server</li>
         <li><strong>No analytics or telemetry</strong> — no Google Analytics, no crash reporting, nothing</li>
       </ul>
+
+      <div class="highlight-card" style="margin-top: 16px;">
+        <p><strong>Local storage only (on your device):</strong> To remember your preferences and active tab pair, the extension uses Chrome's built-in storage APIs. Nothing in storage is uploaded.</p>
+        <ul class="clean-list" style="margin-top: 10px;">
+          <li><strong>chrome.storage.local</strong> — Whether the extension is enabled and your “One audio at a time” setting (until you uninstall or clear extension data)</li>
+          <li><strong>chrome.storage.session</strong> — Which two tabs are paired (cleared when you close the browser)</li>
+        </ul>
+      </div>
     </section>
 
     <!-- ── Permissions ── -->
@@ -107,7 +114,11 @@
           </tr>
           <tr>
             <td><span class="perm-badge">storage</span></td>
-            <td><em>Coming in v2.0</em> — Save your preferences (enabled state, sync mode) locally on your device so they persist across browser restarts. Data never leaves your machine.</td>
+            <td>Save your preferences (enabled state, optional “One audio at a time”) in <code style="color: var(--text-accent); background: var(--bg-elevated); padding: 1px 6px; border-radius: 4px; font-size: 12px;">chrome.storage.local</code>, and your active tab pair in <code style="color: var(--text-accent); background: var(--bg-elevated); padding: 1px 6px; border-radius: 4px; font-size: 12px;">chrome.storage.session</code>. Data never leaves your device.</td>
+          </tr>
+          <tr>
+            <td><span class="perm-badge">scripting</span></td>
+            <td>Re-inject content scripts into already-open media tabs when you install or update the extension, so you don't have to refresh every tab manually.</td>
           </tr>
         </tbody>
       </table>

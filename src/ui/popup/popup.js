@@ -77,12 +77,51 @@ function getDisplayHostname(url, sourceType) {
     }
 }
 
+/** Plain text only (no platform icon). */
+function setPlainTitle(titleEl, text) {
+    if (!titleEl) return;
+    titleEl.replaceChildren();
+    titleEl.textContent = text;
+}
+
+/** Icon (trusted SVG from platforms.js) + title text without full innerHTML rebuild. */
+function setTitleWithIcon(titleEl, sourceType, titleText) {
+    if (!titleEl) return;
+
+    let iconEl = titleEl.querySelector('.tab-source-icon');
+    let textEl = titleEl.querySelector('.tab-title-text');
+
+    if (!iconEl || !textEl) {
+        titleEl.replaceChildren();
+        iconEl = document.createElement('span');
+        iconEl.className = 'tab-source-icon';
+        iconEl.setAttribute('aria-hidden', 'true');
+        textEl = document.createElement('span');
+        textEl.className = 'tab-title-text';
+        titleEl.appendChild(iconEl);
+        titleEl.appendChild(textEl);
+    }
+
+    const iconHtml = TogglePlayPlatforms.getSourceIcon(sourceType);
+    const typeKey = sourceType || '';
+    if (iconEl.dataset.sourceType !== typeKey) {
+        iconEl.innerHTML = iconHtml;
+        iconEl.dataset.sourceType = typeKey;
+    }
+
+    const text = titleText || 'Media';
+    if (textEl.textContent !== text) {
+        textEl.textContent = text;
+    }
+}
+
 function buildRenderSnapshot() {
     const pair = state.activePairs[0];
     const partner = pair && pair.pairedWith && pair.pairedWith[0];
     return JSON.stringify({
         currentTabId: state.currentTabId,
-        currentTitle: state._currentTabTitle || '',
+        currentSource: state._currentSourceType || '',
+        currentTitle: state._currentTabPlainTitle || '',
         currentHost: state._currentTabHost || '',
         currentHasMedia: !!state._currentHasMedia,
         tabs: state.availableTabs.map(function (t) {
@@ -269,12 +308,11 @@ function renderCurrentTab() {
 
     if (!tab || !tab.url || !TogglePlayPlatforms.isMediaUrl(tab.url)) {
         state._currentHasMedia = false;
-        state._currentTabTitle = 'No media tab active';
+        state._currentSourceType = null;
+        state._currentTabPlainTitle = 'No media tab active';
         state._currentTabHost = 'Navigate to YouTube, YouTube Music, or Spotify';
         container.classList.toggle('has-media', false);
-        if (currentTabEls.title.textContent !== state._currentTabTitle) {
-            currentTabEls.title.textContent = state._currentTabTitle;
-        }
+        setPlainTitle(currentTabEls.title, state._currentTabPlainTitle);
         if (currentTabEls.url.textContent !== state._currentTabHost) {
             currentTabEls.url.textContent = state._currentTabHost;
         }
@@ -283,15 +321,13 @@ function renderCurrentTab() {
     }
 
     const sourceType = TogglePlayPlatforms.getSourceType(tab.url);
-    const icon = TogglePlayPlatforms.getSourceIcon(sourceType);
     state._currentHasMedia = true;
-    state._currentTabTitle = icon + ' ' + (tab.title || 'Media');
+    state._currentSourceType = sourceType;
+    state._currentTabPlainTitle = tab.title || 'Media';
     state._currentTabHost = getDisplayHostname(tab.url, sourceType);
 
     container.classList.toggle('has-media', true);
-    if (currentTabEls.title.textContent !== state._currentTabTitle) {
-        currentTabEls.title.textContent = state._currentTabTitle;
-    }
+    setTitleWithIcon(currentTabEls.title, sourceType, state._currentTabPlainTitle);
     if (currentTabEls.url.textContent !== state._currentTabHost) {
         currentTabEls.url.textContent = state._currentTabHost;
     }
@@ -328,8 +364,6 @@ function createAvailableTabRow(tab) {
 
 function updateAvailableTabRow(row, tab) {
     const sourceType = tab.sourceType || TogglePlayPlatforms.getSourceType(tab.url);
-    const icon = TogglePlayPlatforms.getSourceIcon(sourceType);
-    const title = icon + ' ' + (tab.title || 'Media');
     const host = getDisplayHostname(tab.url, sourceType);
     const isSelected = tab.id === state.selectedTabId;
 
@@ -339,7 +373,7 @@ function updateAvailableTabRow(row, tab) {
     const urlEl = row.querySelector('.available-tab-url');
     const btn = row.querySelector('.select-button');
 
-    if (titleEl.textContent !== title) titleEl.textContent = title;
+    setTitleWithIcon(titleEl, sourceType, tab.title || 'Media');
     if (urlEl.textContent !== host) urlEl.textContent = host;
     if (btn.textContent !== (isSelected ? 'Selected' : 'Select')) {
         btn.textContent = isSelected ? 'Selected' : 'Select';
@@ -432,14 +466,8 @@ function renderActivePairs() {
         container.appendChild(item);
     }
 
-    const icon1 = TogglePlayPlatforms.getSourceIcon(
-        firstPair.sourceType || TogglePlayPlatforms.getSourceType(firstPair.url)
-    );
-    const icon2 = TogglePlayPlatforms.getSourceIcon(
-        pairedTab.sourceType || TogglePlayPlatforms.getSourceType(pairedTab.url)
-    );
-    const t1 = icon1 + ' ' + (firstPair.title || 'Media');
-    const t2 = icon2 + ' ' + (pairedTab.title || 'Media');
+    const sourceType1 = firstPair.sourceType || TogglePlayPlatforms.getSourceType(firstPair.url);
+    const sourceType2 = pairedTab.sourceType || TogglePlayPlatforms.getSourceType(pairedTab.url);
     const u1 = 'Tab ' + firstPair.tabId;
     const u2 = 'Tab ' + pairedTab.tabId;
 
@@ -447,9 +475,9 @@ function renderActivePairs() {
     const urls = item.querySelectorAll('.pair-tab-url');
     const removeBtn = item.querySelector('.remove-pair-btn');
 
-    if (titles[0].textContent !== t1) titles[0].textContent = t1;
+    setTitleWithIcon(titles[0], sourceType1, firstPair.title || 'Media');
+    setTitleWithIcon(titles[1], sourceType2, pairedTab.title || 'Media');
     if (urls[0].textContent !== u1) urls[0].textContent = u1;
-    if (titles[1].textContent !== t2) titles[1].textContent = t2;
     if (urls[1].textContent !== u2) urls[1].textContent = u2;
 
     removeBtn.dataset.tab1 = String(firstPair.tabId);
@@ -775,9 +803,14 @@ async function initialize() {
         
         // Set up event listeners
         setupEventListeners();
+
+        const versionEl = document.getElementById('extensionVersion');
+        if (versionEl && chrome.runtime && chrome.runtime.getManifest) {
+            versionEl.textContent = 'v' + chrome.runtime.getManifest().version;
+        }
         
         if (currentTabEls.title) {
-            currentTabEls.title.textContent = 'Loading current tab...';
+            setPlainTitle(currentTabEls.title, 'Loading current tab...');
         }
         if (currentTabEls.url) {
             currentTabEls.url.textContent = '';

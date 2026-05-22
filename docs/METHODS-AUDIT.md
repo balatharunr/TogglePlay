@@ -1,6 +1,6 @@
 # TogglePlay — Methods & Architecture Audit
 
-**Version audited:** 1.2.1 (Manifest V3)  
+**Version audited:** 2.0.0 (Manifest V3)  
 **Date:** 2026-05-16  
 **Scope:** All detection, control, communication, and UI methods across `src/background/`, `src/content/<platform>/`, `src/content/shared/`, and `src/popup/`.
 
@@ -599,4 +599,4 @@ If you are deciding what to implement first after research:
 
 ---
 
-*This document reflects the repository as of v1.2.1. Re-run the audit after major refactors or new platform support.*
+*This document reflects the repository as of v2.0.0. Re-run the audit after major refactors or new platform support.*

@@ -1,6 +1,6 @@
 # TogglePlay v2 — Implementation Roadmap
 
-**Target release:** `2.0.0`  
+**Released:** `2.0.0` (2026-05-22) — core pairing, persistence, settings, and platform sync shipped. Remaining items below are future work.  
 **Sources:** [METHODS-AUDIT.md](./METHODS-AUDIT.md) · [Architectural Overhaul.md](../Architectural%20Overhaul.md)  
 **Principles:** Media Session first · DOM fallback only · stateless service worker · Exclusive Mode default · nonce echo suppression · zero site-keyboard conflicts
 
@@ -547,12 +547,10 @@ flowchart LR
 
 | Version | Phases included | User-visible theme |
 |---------|-----------------|-------------------|
-| `1.2.1` | 0 | Current — DOM/heuristic, mirror-only, RAM state |
-| `2.0.0-beta.1` | 1–2 | Fixes + persistence |
-| `2.0.0-beta.2` | 3–4 | Exclusive mode + stable sync |
-| `2.0.0-beta.3` | 5–7 | Media Session + buffering + autoplay |
-| `2.0.0-rc.1` | 8–11 | Commands + UX + perf |
-| `2.0.0` | 12 | Production release |
+| `1.2.1` | 0 | Legacy — DOM/heuristic, mirror-only, RAM state |
+| `2.0.0-beta.1` | 1–2 | Fixes + persistence (pre-release) |
+| `2.0.0` | 1–4 | **Shipped** — Mirror pairing, optional one-audio-at-a-time, storage, popup UX |
+| `2.1.x`+ | 5–12 | Media Session, chrome.commands, further hardening (planned) |
 
 ---
 

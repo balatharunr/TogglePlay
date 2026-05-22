@@ -28,6 +28,8 @@ rm -f "$OUT"
 
 zip -r "$OUT" \
   manifest.json \
+  CHANGELOG.md \
+  README.md \
   assets \
   src \
   -x "**/.DS_Store" \
